@@ -1,0 +1,37 @@
+js根据dom可以访问html中所有的元素
+这样才有足够的能力来创建动态HTML
+
+Dom对象 	
+	dom：document object model,文本对象模型
+	文本：超文本文档(超文本标记文档) xml
+	对象：提供了属性和方法
+	模型：使用属性和方法在操作超文本标记文档
+	
+	Document:整个html文件都成为一个document文档
+	Element:所有的标签都是Element元素
+	Attribute：标签里面的属性
+	Text：标签中间夹着的内容为text文本
+	Node:document、element、attribute、text统称为节点node.
+		-- Node节点对象：这个对象是这些对象的父对象
+		*** 如果在对象里面找不到想要的方法，这个时候到Node对象里面去找
+		
+	document：
+		document.getElementById(); //返回指定id的第一个对象引用
+		document.getElementsByName(); //返回带有name对象集合
+		document.getElementsByTagName(); //返回带有指定标签的对象集合
+		document.createTextNode(); //创建文本节点
+		document.createElement(); //创建元素节点
+	
+	element：
+		element.appendChild(); //向元素添加新的子节点，作为最后一个子节点。
+		element.removeChild(); //从元素中移除子节点。
+		element.replaceChild(); //替换元素中的子节点。
+		element.insertBefore(); //在指定的已有的子节点之前插入新节点。
+		element.firstChild; //返回元素的首个子节点。
+		element.lastChild; //返回元素的最后一个子元素。
+		element.innerHTML; //设置或返回元素的内容。
+		element.setAttribute(); //把指定属性设置或更改为指定值。
+		element.getAttribute(); //返回元素节点的指定属性值。
+
+
+	

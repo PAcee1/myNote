@@ -1,0 +1,115 @@
+一、过滤器入门
+1.1	过滤器
+在一组资源之前执行(jsp,servlet,html等)
+可以让请求达到资源，也可以达不到
+有拦截请求的能力
+	
+1.2	过滤器如何编写
+1.写一个类实现Filter接口
+2.在web.xml中配置
+
+1.3	Filter接口
+有三个方法需要重写
+void init(FilterConfig);
+	创建Filter对象之后执行，即服务器启动后
+void destory();
+	对象销毁前执行，即服务器关闭前
+void doFilter(ServletRequest,ServletResponse,FilterChain);
+	访问被过滤页面时执行
+Filter为单例模式
+
+1.4	web.xml
+<filter>
+	<filter-name></filter-name>
+	<filter-class></filter-class>
+</filter>
+<filter-mapping>
+	<filter-name></filter-name>
+	<url-pattern><url-pattern>
+</filter-mapping>
+
+1.5 Filter参数
+FilterConfig：与ServletConfig类似
+	* 获取初始化参数：getInitParameter()
+	* 获取Filter名称：getFilterName()
+	* 获取application：getServletContext()
+FilterChain
+	* doFilter(ServletRequest,ServletResponse)；放行
+	相当于调用被拦截Servlet的service方法，调用完后会回到过滤器doFilter方法中
+
+1.6 多过滤器
+	* Chain.doFilter()执行下一个过滤器，如果没有下一个过滤器，那么执行目标资源
+	* 执行完目标资源，返回最后一个过滤的过滤器
+	* AFilter过滤...BFilter过滤...AServlet...返回BFilter...返回AFilter
+	* 过滤器执行顺序和web.xml中配置顺序有关
+
+1.7 过滤器的四种拦截方式
+	* <dispatcher>REQUEST</dispatcher> 默认
+	* <dispatcher>FORWARD</dispatcher>
+	* <dispatcher>INCLUDE</dispatcher>
+	* <dispatcher>ERROR</dispatcher>
+	如果不写dispatcher，默认只拦截request请求
+
+1.8 过滤器应用场景
+	* 执行资源前预处理工作，如设置编码
+	* 通过条件判断是否放行，如登录，ip地址禁用
+	* 获取目标资源后的后续处理工作，例如把目标资源输出的数据进行处理
+
+二、Filter应用案例
+2.1 分IP统计访问次数
+	* 使用Map来存储ip+count
+	* Filter：进行统计工作，不进行拦截，只做统计
+	* Listener：创建Map，服务器启动时创建
+	* ServletContext：Map贯穿整个项目，所以保存在ServletContext中
+
+2.2 粗粒度权限管理
+	* jsp：
+		- login.jsp登录页面
+		- u.jsp 用户页面
+		- a.jsp 管理员页面
+		- index.jsp 游客页面
+		每个页面有三个超链接转到各个页面
+	* Servlet：根据login.jsp表单数据获取，存放用户信息到session域中
+		- 用户名为admin，存到admin键，普通用户名，存username键
+	* Filter：
+		AFilter：过滤a.jsp,不是管理员的用户
+			获取session域，判断admin是否存在，不存在保存信息转发到login.jsp
+		UFilter:过滤u.jsp,过滤游客
+			获取session域，判断admin或username是否存在，不存在保存信息转发到login.jsp
+
+2.3 全站编码问题
+	请求编码
+		* Post，request.setCharacterEncoding("utf-8")
+		* Get，new String(request.getParameter(“xxx”).getBytes(“iso-8859-1”), “utf-8”)
+	响应编码
+		response.setContextType(“text/html;charset=utf-8”)
+	这里的编码问题主要说的是Get的请求编码问题
+	* 解决方案
+		& 写一个Request的掉包类，把getParameter方法重写
+		& 将参数设置好编码(getBytes("iso-8859-1"), "utf-8")
+		& 再返回设置好编码的参数
+
+2.4 页面静态化
+	当用户需要读取数据库里数据，比如所有图书，首次访问去数据库获取数据，然后把数据保存到一个html页面中
+二次访问直接显示静态html页面，这样不用每次访问就去数据库里查找，浪费资源内存，还能提高效率。
+	当然，如果该数据经常变动，例如增加数据删除数据，就不要使用页面静态化了。
+
+实现：
+	1.先做一个简单图书管理项目
+	Servlet：findAll()--查询所有图书，findByCategory--按分类查询
+	jsp:link.jsp--四个超链接，查看不同种类图书，show.jsp--显示查询结果
+	BookBean：Bean类
+	BookDao：数据库操作
+
+	2.实现页面静态化
+	目标：给出过滤器，判断html页面是否存在，不存在将Servlet请求的资源输出到新的html页面中
+		  存在，直接重定向到该页面
+	具体实现：
+		* 拦截Servlet，判断htmls里有没有页面
+		* 如果有，则重定向到category.html文件
+		* 如果没有，创建category.html文件，放行
+			创建html页面：
+			* 本来我们调用show.jsp后，会将结果数据输出到浏览器页面中，这时我们想将数据输出到html静态页面中
+			* 就需要使用response调包，创建新response继承HTTPServletResponseWrapper
+			* 重写getWriter()方法，返回new PrintWrite(path,"utf-8")即输出到path路径文件中
+			* 使用StaticResponse，传入res和file路径

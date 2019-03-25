@@ -1,0 +1,63 @@
+  一、实现多线程：
+	A:需要重写run方法
+		为什么？
+		不是所有的代码都需要被线程执行，所以只需要将执行的放在run()方法中。
+		
+		MyThread my1 =new MyThread();
+		MyThread my2 =new MyThread();
+		my1.start;my2.start;
+		
+	B:获取设置线程名称
+		public final String getName(); // Thread-x 编号
+		public final void setName(String name); //设置线程名称
+			
+		通过构造方法
+		MyThread my1 =new MyThread("A");
+		
+		获取main所在线程对象的名称：
+		public static Thread currentThread();返回当前执行的线程对象
+		// 注意，针对不是Thread类子类的线程对象也可以用这种方法获取名称
+
+二、匿名内部类实现
+public class ThreadDemo {
+	public static void main(String[] args) {
+		new Thread() {
+			public void run() {
+				for(int i=0;i<20;i++) {
+					System.out.println(Thread.currentThread().getName()+":"+i);
+				}
+			}
+		}.start();
+	}
+}
+
+三、电影院卖票程序的实现
+public class SellTicketDemo {
+	public static void main(String[] args) {
+		MyThread my1 = new MyThread();
+		MyThread my2 = new MyThread();
+		MyThread my3 = new MyThread();
+		
+		my1.setName("窗口1");
+		my2.setName("窗口2");
+		my3.setName("窗口3");
+		
+		my1.start();
+		my2.start();
+		my3.start();
+	}
+}
+
+public class MyThread extends Thread{
+	private static int tickets=100;
+	
+	public void run() {
+		while(true) {
+			if(tickets>0) {
+				System.out.println(Thread.currentThread().getName()+"出售："+tickets--);			
+			}else {
+				break;
+			}
+		}
+	}
+}	

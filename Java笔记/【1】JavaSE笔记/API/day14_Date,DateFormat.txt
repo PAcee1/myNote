@@ -1,0 +1,40 @@
+Date/DateFormat(掌握)
+	(1)Date是日期类，可以精确到毫秒。
+		A:构造方法
+			Date()
+			Date(long time)
+		B:成员方法
+			getTime()
+			setTime(long time)
+		C:日期和毫秒值的相互转换
+			从Date得到毫秒值 getTime()
+				Date date=new Date();
+				long time=date.getTime();
+				
+			把毫秒值转日期
+				使用构造方法
+				使用setTime()方法
+		
+		案例：你来到这个世界多少天了?
+	(2)DateFormat针对日期进行格式化和针对字符串进行解析的类，但是是抽象类，所以使用其子类SimpleDateFormat
+		构造方法：
+			SimpleDateFormat() 默认模式
+				18-02-27 下午9:49
+			SimpleDateFormat(String pattern) 给定模式
+			yyyy-MM-dd HH:mm:ss
+			
+		B:日期和字符串的转换
+			a:Date -- String  //format()
+			  Date d=new Date();
+			  SimpleDateFormat sdf=new SimpleDateFormat(yyyy-MM-dd HH:mm:ss);
+			  String s=sdf.format(d);
+			  
+			b:String -- Date
+				//模式应和给的字符串格式所匹配
+				String s="2008-08-08 12:12:12";
+				SimpleDateFormat sdf=new SimpleDateFormat(yyyy-MM-dd HH:mm:ss);
+				Date date=sdf.parse(s);
+				
+				parse()
+		C:案例：
+			制作了一个针对日期操作的工具类。

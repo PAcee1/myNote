@@ -1,0 +1,95 @@
+Collection 单列集合
+	|-List 有序，可重复
+		|-ArrayList
+			底层是数组，查询快，增删慢
+			线程不安全，效率高
+		|-Vector
+			底层是数组，查询快，增删慢
+			线程安全，效率低
+		|-LinkedList
+			底层是链表，查询慢，增删快
+			线程不安全，效率高
+			
+	|-Set 无序，唯一
+		|-HashSet
+			底层是哈希表
+			哈希表唯一依赖两个方法：hashCode(),equals();
+			执行顺序：
+				先看哈希值是否相同即hashCode():
+					是：调用equals()方法，判断返回值
+						是true:不添加
+						是false：添加到集合
+					否：直接添加
+			|—LinkedHashSet
+				底层是哈希表和链表
+				哈希表保证元素唯一
+				链表保证元素有序
+		|-TreeSet	自动排序
+			底层是红黑树，自然平衡二叉树
+			保证元素唯一性：
+				看元素返回值是否为0来决定
+			有两种排序方法
+				自然排序：元素具备比较性
+					元素所在的类实现Comparable接口，重写compareTo()方法
+				比较器排序：集合具备比较性
+					让集合接收一个实现Comparator的类对象，重写compare()方法	
+	
+Map	 双列集合
+	A:Map集合的数据结构仅对键有效，对值无效
+	B:Map集合中存储的是键值对的元素，键唯一，值可以重复
+	
+	|-HashMap
+		底层是哈希表
+			哈希表唯一依赖两个方法：hashCode(),equals();
+			执行顺序：
+				先看哈希值是否相同即hashCode():
+					是：调用equals()方法，判断返回值
+						是true:不添加
+						是false：添加到集合
+					否：直接添加
+		|—LinkedHashSet
+				底层是哈希表和链表
+				哈希表保证元素唯一
+				链表保证元素有序			
+		|—Hashtable
+			与HashMap区别：Hashtable线程安全，效率低，不允许null键null值
+						   HashMap线程不安全，效率高，允许null键null值
+	|-TreeMap
+		底层是红黑树，自然平衡二叉树
+			保证元素唯一性：
+				看元素返回值是否为0来决定
+			有两种排序方法
+				自然排序：元素具备比较性
+					元素所在的类实现Comparable接口，重写compareTo()方法
+				比较器排序：集合具备比较性
+					让集合接收一个实现Comparator的类对象，重写compare()方法	
+					
+如何选择一个集合：
+是否有键值对关系{
+	是：Map
+		键是否需要排序?{
+			是:TreeMap
+			否：HashMap
+			不知道就用HashMap
+	}
+	否：Collection
+		元素是否唯一?{
+			是：Set
+				元素是否需要排序？{
+					是：TreeSet
+					否：HashSet
+				}
+			否：List
+				线程安全吗?{
+					是：Vector
+					否：ArrayList，LinkedList
+						查询多：ArrayList
+						删除多：LinkedList
+					不知道就用ArrayList
+				}			
+		}			
+}				
+全都不知道就用ArrayList					
+
+
+					

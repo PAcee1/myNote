@@ -1,0 +1,115 @@
+
+【开始学习之前】
+
+1.我的学习工具和方法
+https://www.bilibili.com/video/av19575190/
+2.回答零基础小白的常见疑问
+https://www.bilibili.com/video/av19575265/
+3.如何理解ssh框架
+https://www.bilibili.com/video/av19634515/
+https://www.zhihu.com/question/30525693/answer/310756737
+4.正式学习前开发环境的准备
+https://zhuanlan.zhihu.com/p/34682322
+https://www.bilibili.com/video/av19943936/
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+重要事项：学习下面视频一定要结合我的知乎帖子！！！按照帖子来，然后常回《闷骚的程序员》专栏看看，可能你的问题，我都写了
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+--------------------------------【学习路线】----------------------------------
+
+
+---------------------------------热身（会for循环即可跳过）---------------------------
+
+如果你目前连for循环都不知道是什么，请先快速过一遍郝斌老师的C语言教程：
+https://www.zhihu.com/question/59218537/answer/163166356
+https://www.bilibili.com/video/av8074534/?from=search&seid=6209617726442108025
+
+
+---------------------------------JavaSE---------------------------------------
+
+我的笔记（根据刘意和崔希凡视频）       链接：https://pan.baidu.com/s/1wFZGpXlw-YaDIGi4Sl8nww 密码：5hqz
+
+刘意Javase                             链接：https://pan.baidu.com/s/1eRZB3xg 密码：1645
+毕向东30天                             链接：https://pan.baidu.com/s/1dGZCW3f 密码：6bt9（辅助补充）
+
+学完JavaSE，可能会迷茫学了什么用，后面JavaWeb又学了是干嘛的。所以先看下面的介绍，看完就不迷茫了。
+链接：https://pan.baidu.com/s/1deR4ZG 密码：olcb
+
+
+
+---------------------------------JavaWeb--------------------------------------
+
+崔希凡Javaweb                          链接：https://pan.baidu.com/s/1hs8Jrxi 密码：032j
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+刘意老师和崔老师，尤其崔老师的JavaWeb的笔记是非常详细，讲得非常好的。不要只看我的思维导图。
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+---------------------------------SSH框架--------------------------------------
+
+ssh框架（了解思想即可，不要去记。因为记多了会和后面的springmvc、mybatis弄混）：
+崔希凡struts2                          链接：https://pan.baidu.com/s/1dFMwERZ 密码：8vsy
+刘悦东ssh（重点看struts2，项目不用看） 链接：https://pan.baidu.com/s/1pLKa3Sv 密码：03jg
+梁桐Spring                             链接：https://pan.baidu.com/s/1brGrRrUAeYko3G7eICRBjw 密码：0vDk
+2016ssh框架（重点）                    链接：https://pan.baidu.com/s/1bp4POJ1 密码：8ez7
+手写山寨版Spring IoC容器               链接：https://pan.baidu.com/s/1bqw1kKn 密码：5h4s
+手写山寨版Struts2                      链接：https://pan.baidu.com/s/1eSTUNJ0 密码：caec
+
+
+---------------------------------SSM框架--------------------------------------
+
+ssm框架：
+先回头看崔希凡javaweb day-17-18-19 day-27-28
+黑马32期 李旭 mybatis+springmvc        链接：https://pan.baidu.com/s/1qZYAgtI 密码：055k
+由浅入深springmvc+mybatis              链接：https://pan.baidu.com/s/1i4DQOZF 密码：cuaa
+MyBatis源码级讲解                      链接：https://pan.baidu.com/s/1htKD5xM 密码：59yi
+SVN                                    链接：https://pan.baidu.com/s/1mkf4q84 密码：hgoq
+Maven                                  链接：https://pan.baidu.com/s/16dZnZyh9U5KnTjnJHISqFg 密码：uhaa
+
+---------------------------------后端加强部分--------------------------------------
+
+在我自己外包工作过程中，最大的感触是，做一个程序除了做页面比较难（属于前端了），就是SQL语句了。因为大部分外包公司，逻辑是非常简单的，框架搭好以后就是复制粘贴了。
+所以这里给大家加强一下MySQL。至于Oracle，大家看下面的就业班,叫赵强的人讲的。
+这个人好像是专门搞数据库的，挺牛逼。但是视频音质不好...我没看。
+
+MySQL基础                              链接：https://pan.baidu.com/s/1oKRdC2tncYp-Xf6OOrWHEw 密码：kgao
+MySQL高级			       链接：https://pan.baidu.com/s/1aLaRCyCMinzk0O-aT0aLBA 密码：v8p5
+Oracle                                 链接：https://pan.baidu.com/s/13_fkziXinAOUGgtwjt1NbQ 密码：scw3
+
+崔老师的JavaWeb中，MySQL只是讲了很基础的东西。上面的讲得比较深入。
+我觉得大家再学一遍并不是浪费时间。因为我相信你学到这里，估计MySQL也忘得差不多了。刚好复习梳理一下。
+
+其实数据库通用的SQL语句都是差不多的。一通百通。所以我是推荐大家把MySQL尽量学精。需要Oracle时，学得也快。
+
+
+至于Maven、Linux、WebService、redis这些，其实我觉得这些知识点并非新手必备的，暂时用不上。把上面的学精先，有余力再学。
+但我不是说不重要！需要学习的朋友，可以在下面就业班里找到。
+
+
+---------------------------------前端加强部分--------------------------------------
+待更新...因为我不推荐自己没看过的。等我学完再说吧。
+其实我自己目前是做外包，反而觉得前端是非常重要的。尤其Ajax、jQuery等。我希望大家学习前端页面知识时，一定态度要端正。
+
+
+
+一站式学习：
+黑马28期就业班：链接：https://pan.baidu.com/s/1pK9BD7H 密码：fo9f
+黑马32期就业班：链接：https://pan.baidu.com/s/1c79NwM 密码：pxqs
+
+
+就业指导：
+链接：https://pan.baidu.com/s/1mhWu0vY?fid=707530894697495
+链接：https://pan.baidu.com/s/1hsrjqaK 密码：xrbh
+
+
+推荐网站（授人以渔，记得好好利用）:
+					http://www.atguigu.com/download.shtml
+					http://yun.itheima.com/map/22.html?a5
+					https://ke.qq.com/course/199779
+					
+					

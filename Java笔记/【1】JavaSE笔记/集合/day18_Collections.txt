@@ -1,0 +1,15 @@
+Collections(理解)	
+	(1)是针对集合进行操作的工具类
+	(2)面试题：Collection和Collections的区别
+		A:Collection 是单列集合的顶层接口，有两个子接口List和Set
+		B:Collections 是针对集合进行操作的工具类，可以对集合进行排序和查找等
+	(3)常见的几个小方法：
+		A:public static <T> void sort(List<T> list)
+		B:public static <T> int binarySearch(List<?> list,T key)
+		C:public static <T> T max(Collection<?> coll)
+		D:public static void reverse(List<?> list)
+		E:public static void shuffle(List<?> list)
+	(4)案例
+		A:ArrayList集合存储自定义对象的排序
+		B:模拟斗地主洗牌和发牌
+		C:模拟斗地主洗牌和发牌并对牌进行排序

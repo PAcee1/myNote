@@ -1,0 +1,56 @@
+1:正则表达式(理解)
+	(1)就是符合一定规则的字符串
+	(2)常见规则
+		A:字符
+			x 字符 x。举例：'a'表示字符a
+			\\ 反斜线字符。
+			\n 新行（换行）符 ('\u000A') 
+			\r 回车符 ('\u000D')
+			
+		B:字符类
+			[abc] a、b 或 c（简单类） 
+			[^abc] 任何字符，除了 a、b 或 c（否定） 
+			[a-zA-Z] a到 z 或 A到 Z，两头的字母包括在内（范围） 
+			[0-9] 0到9的字符都包括
+			
+		C:预定义字符类
+			. 任何字符。我的就是.字符本身，怎么表示呢? \.
+			\d 数字：[0-9]
+			\w 单词字符：[a-zA-Z_0-9]
+				在正则表达式里面组成单词的东西必须有这些东西组成
+
+		D:边界匹配器
+			^ 行的开头 
+			$ 行的结尾 
+			\b 单词边界
+				就是不是单词字符的地方。
+				举例：hello world?haha;xixi
+			
+		E:Greedy 数量词 
+			X? X，一次或一次也没有
+			X* X，零次或多次
+			X+ X，一次或多次
+			X{n} X，恰好 n 次 
+			X{n,} X，至少 n 次 
+			X{n,m} X，至少 n 次，但是不超过 m 次 
+	(3)常见功能：(分别用的是谁呢?)
+		A:判断功能
+			String类的public boolean matches(String regex)
+		B:分割功能
+			String类的public String[] split(String regex)
+		C:替换功能
+			String类的public String replaceAll(String regex,String replacement)
+		D:获取功能
+			Pattern和Matcher
+				//把正则表达式编译成模式对象
+				Pattern p = Pattern.compile("a*b");
+				//通过模式对象得到匹配器对象，这时需要被匹配的字符串
+				Matcher m = p.matcher("aaaaab");
+				
+				find():查找存不存在
+				group():获取刚才查找过的数据
+	(4)案例
+		A:判断电话号码和邮箱
+		B:按照不同的规则分割数据
+		C:把论坛中的数字替换为*
+		D:获取字符串中由3个字符组成的单词

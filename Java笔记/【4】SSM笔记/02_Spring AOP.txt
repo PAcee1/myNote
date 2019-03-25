@@ -1,0 +1,269 @@
+/********************************************************/
+					  先认识代理
+/********************************************************/
+1.什么是代理？
+	代理(Proxy)是一种设计模式，提供了对目标对象的另一种访问方式，通过代理访问对象，这样的好处
+是：可以在目标对象方法实现上，增强额外的功能，即拓展目标对象功能。
+	例子：
+		我想在英雄联盟上到最强王者，但是我技术不够达不到，我就可以让代练(代理)帮我上分，因为使用
+	的是我的账号，所以是以我为基础的。
+		周杰伦很出名，粉丝想要他开演唱会，但他需要收费，作为一个公众人物，直接说出“我要收钱！”很
+	影响自己的声誉，所以这件事交给经纪人(代理)，由经纪人处理演唱会策划，善后工作，周杰伦只需要唱
+	歌就完事了。
+
+2.静态代理与动态代理
+	静态代理：
+		· 自己实现代理类
+		· 如果有很多接口需要代理，就需要写很多代理类，很繁琐
+		· 如果接口改动，代理类的改动很大
+	动态代理：
+		· 使用JDK或cglibAPI自动生成代理，即动态生成代理
+
+3.简而言之：如果需要在原有对象上增强方法，使用动态代理是不二选择
+
+/********************************************************/
+					  Spring AOP
+/********************************************************/
+一、AOP介绍
+1.1 什么是AOP
+	· AOP为面向切面编程，通过预编译和运行期动态代理实现功能统一维护的一种技术，使用AOP开源可以降低
+耦合度，并且提高程序可重用性，提高开发效率
+	· AOP使用纯Java实现，不需要专门的编译过程和类加载器，在运行期间通过代理方式向目标织入增强代码
+	· AOP采取横向抽取机制，取代了传统的纵向继承体系的重复性代码
+	· 经典应用：事务管理，日志管理，性能监视，缓存，安全检查
+	· AspectJ是基于java的AOP框架
+
+	1.1.1 横向抽取
+		将分散在各个业务逻辑代码中重复的代码横向抽取出来，保存在独立的模块中，当需要将切割出来的
+	逻辑代码和业务代码结合的时候，就需要aop完成。
+	1.1.2 纵向继承
+		service类具有添加，删除用户的功能，现有一子类继承service类，如果它要为父类方法增强，比如
+	在添加或删除用户前后开启事务提交事务，这样所有的方法内部都需要修改，重复度很高，即纵向继承。
+		
+1.2 AOP实现原理
+	· 底层是动态代理
+	· JDK：存在接口+实现类，spring默认使用jdk
+	· CGLib：只有实现类，spring默认使用cglib
+	· 如果是单例的我们最好使用CGLib代理，如果是多例的我们最好使用JDK代理
+		因为：jdk在生成代理类是效率高，但在运行时cglib效率高
+
+1.3 AOP术语【掌握】
+	· target：目标类，要被代理的类
+	· joinpoint：连接点，可能被拦截并增强的方法，例如：所有方法
+	· pointcut：切入点，具体定位的连接点，即将要被增强的方法，例如：addUser()
+	· advice：增强/通知，增强的代码，Spring提供了五种AOP联盟通知，例如：前置通知，后置通知
+	· weaving：织入，是一个过程，增强advice应用到目标对象target来创建新的代理对象proxy
+	· proxy：代理类
+	· aspect：切面，切入点pointcut和advice结合链成的面
+
+二、实现动态代理
+手动方式：
+2.1 JDK动态代理
+	对装饰者模式的简化，使用前提必须是接口+实现类
+	实现：(具体看/SSM_Spring_02_aop/src/cn.zhao.a_proxy.a_jdk或word笔记)
+		targert：接口+实现类
+		aspect：MyAspect
+		工厂类：在工厂类生成代理对象
+
+2.2 cglib字节码增强
+	没有接口，只有实现类
+	采用字节码增强框架cglib，运行时创建目标类子类，从而实现对目标类的增强
+	需要jar包：
+		核心：hibernate-distribution-3.6.10.Final\lib\bytecode\cglib\cglib-2.2.jar
+		依赖：struts-2.3.15.3\apps\struts2-blank\WEB-INF\lib\asm-3.3.jar
+		spring-core..jar 已经整合以上两个内容
+	具体四步：
+		1.创建核心类Enhancer
+		2.确定父类 enhancer.setSuperClass()
+		3.设置回调函数 enhancer.setCallbacke(new MethodInterceptor(){匿名内部类});
+		4.创建代理 enhancer.create();
+
+spring编写代理
+* 需要知识：AOP联盟通知类型
+	· AOP联盟为通知Advice定义了org.aopalliance.aop.Advice
+	· Spring按通知Advice在目标类方法的连接点位置，分为5类
+		* 前置通知，MethodBeforeAdvice：在方法前执行
+		* 后置通知，MethodAfterAdvice：在方法后执行
+		* 环绕通知，MethodInterceptor：在方法前后执行
+			必须手动执行目标方法(mi.proceed())
+		* 异常抛出通知，ThrowsAdvice：异常抛出后通知
+		* 引介通知，IntroductionInterceptor：目标类中添加新的方法或属性
+
+2.3 spring半自动编写代理
+	让spring创建代理对象，从spring容器中手动获取代理对象
+	jar包：除了昨天的5个还需要
+		com.springsource.org.aopalliance... ，aop联盟
+		spring-aop-3.2.0.RELEASE.jar ,spring aop实现
+	xml配置文件：
+		<!-- 配置目标类 -->
+		<bean id="userService" class="cn.zhao.b_spring_aop.UserServiceImpl"></bean>
+		<!-- 配置切面类 -->
+		<bean id="myApsect" class="cn.zhao.b_spring_aop.MyApsect"></bean>
+		<!-- 
+			创建代理类
+			· 使用工程beanFactoryBean，底层调用getObject()返回特殊bean
+			· ProxyFactoryBean，特殊工厂，用于创建代理对象
+				interfaces:目标类的所有接口
+					注意：多个目标类使用<array>，一个可以直接使用value=""
+				target:设置目标类
+				interceptorNames：切面类的名称，类型为String[]，和interfaces一样，设置一个可以使用value
+				optimize：强制使用cglib
+		 -->
+		<bean id="proxyService" class="org.springframework.aop.framework.ProxyFactoryBean">
+			<property name="interfaces" value="cn.zhao.b_spring_aop.UserService"></property>
+			<property name="target" ref="userService"></property>
+			<property name="interceptorNames" value="myApsect"></property>
+		</bean>
+
+2.4 spring aop编程：全自动
+	从spring容器获得目标类，如果配置aop，spring自动生成代理
+	jar包：aspectj.weaver-1.6.8...
+
+	spring配置：
+		· 导入命名空间
+			xmlns:aop="http://www.springframework.org/schema/aop"
+			xsi:schemaLocation="http://www.springframework.org/schema/aop
+								http://www.springframework.org/schema/aop/spring-aop.xsd"
+		· 使用<aop:config>进行配置
+			<aop:config>
+				<aop:pointcut id="" expression="" /> //切入点,获取目标类需要增强的方法
+					expression：切入点表达式
+				<aop:advisor advice-ref="" point-ref=""/> //特殊的切面，只能配置一种切面类和切入点
+			</aop:config>
+		· aop底层默认使用proxy动态代理，可以在aop:config上设置属性 proxy-target-class="true" 设置cglib代理
+
+三、AspectJ
+3.1 介绍
+	· AspectJ是一个基于Java语言的AOP框架
+	· Spring2.0之后新增了对AspectJ切点表达式的支持
+	· @AspectJ是AspectJ1.5后新增功能，通过JDK5注解技术，允许直接在bean类中定义切面
+	· 主要用于自动以开发
+
+3.2 切入点表达式【掌握】
+	· execution：用于描述方法
+		语法：execution(修饰符 返回值 包.类.方法名(参数) throws 异常)
+			修饰符：一般省略，public，*任意
+			返回值：void，String，*
+			包：
+				cn.zhao		固定包
+				cn.zhao.*.service	zhao包下面子包任意 （例如：cn.zhao.bookstore.service）
+				cn.zhao..			zhao包下面的所有子包（含自己）
+				cn.zhao.*.service..	zhao包下面任意子包，固定目录service，service目录任意包
+			类
+				UserServiceImpl	指定类
+				*Impl			以Impl结尾
+				User*			以User开头
+				*				任意
+			方法名
+				addUser	固定方法
+				add*	以add开头
+				*Do		以Do结尾
+				*		任意
+			参数
+				()			无参
+				(..)		参数任意
+				(int)		一个整型
+				(int,int)	两个整型
+						异常：一般省略
+		综合1
+			execution(* cn.zhao.*.service..*.*(..))
+			任意返回值，cn.zhao.包下任意包含service包下的所有包的任意类，任意方法，并且任意参数
+		综合2
+			<aop:pointcut expression="execution(* cn.zhao.*WithCommit.*(..)) || 
+                          execution(* cn.zhao.*Service.*(..))" id="myPointCut"/>
+
+3.3 AspectJ通知类型
+	· aop联盟通知类型具有特定的接口，实现从而确定方法名称
+	· AspectJ通知类型，只定义类型名称，以及方法格式
+	· 一共有六种，知道5种，掌握一种
+		before：前置通知(表单校验)
+			方法开始前执行，如果抛出异常，阻止方法运行
+		afterReturning：后置通知(常规数据处理)
+			方法正常返回后执行，如果抛出异常，通知无法执行
+		around：环绕通知(可以做任何事情)
+		afterThrowing：抛出异常通知(包装异常信息)
+		after：最终通知(释放资源)
+	· 环绕通知：可以做其他五种任何事情
+		try{
+			//前置：before
+			//执行方法mi.proceed
+			//后置：afterReturning
+		}catch(){
+			//抛出异常：afterThrowing
+		}finally{
+			//最终：after
+		}
+
+3.4 基于xml配置AspectJ
+	<aop:config>
+		** 设置通知
+		<aop:aspect ref="myApsect">
+			ref：配置切面类
+
+			· 设置切入点
+				<aop:pointcut expression="execution(* cn.zhao.d_aspectj.a_xml.UserService.*(..))" id="joinpoint"/> 
+
+			· 前置通知
+				<aop:before method="" pointcut="" pointcut-ref="" />
+					method：切面类中前置通知方法名称
+					pointcut：切入点表达式，只能当前通知可用
+					pointcut-ref：引入切入点，共享切入点
+				通知方法格式：
+					public void myBefore(JoinPoint joinPoint) 
+					JoinPoint：描述连接点，获取目标方法等
+				例子：<aop:before method="myBefore" pointcut-ref="joinpoint" />
+				
+			· 后置通知
+				<aop:after-returning method="" pointcut-ref="" returning=""/>
+					returning：返回值，为通知方法第二个参数参数名
+				通知方法格式：
+					public void myAfterReturning(JoinPoint joinPoint,Object ret)
+					Object ret：获取返回值，ret为变量名
+				例子：<aop:after-returning method="myAfterReturning" pointcut-ref="joinpoint" returning="ret"/>
+				
+			· 环绕通知
+				<aop:around method="" pointcut-ref="" />
+				通知方法格式：
+					public Object myAround(ProceedingJoinPoint joinPoint) throw Throwable
+						返回值：Object，执行目标方法后获取
+						参数：ProceedingJoinPoint-JoinPoint子接口，用来执行目标方法
+						异常：Throwable
+						要求：手动执行目标方法，joinPoint.proceed(); 
+				例子：<aop:around method="myAround" pointcut-ref="joinpoint" />
+				
+			· 抛出异常通知
+				<aop:after-throwing method="" pointcut-ref="" throwing=""/>
+					throwing:通知方法第二个参数的参数名
+				通知方法格式：
+					public void myAfterThrowing(JoinPoint joinPoint,Throwable e)
+						参数2：获得异常信息，类型Throwable ，参数名由throwing="e"配置
+				例子：<aop:after-throwing method="myAfterThrowing" pointcut-ref="joinpoint" throwing="e"/>
+
+			· 最终通知
+				 <aop:after method="" pointcut-ref=""/>
+				 通知方法格式：
+					public void myAfter(JoinPoint joinPoint)
+				 例子：<aop:after method="myAfter" pointcut-ref="joinpoint"/>
+		</aop:aspect>
+	</aop:config>
+
+3.5 基于注解配置使用AspectJ
+	MyAspect切面类配置：
+		@Component ：扫描注解类
+		@Aspect：声明为切面类
+			@PointCut("切入点表达式") 切入点
+			public void myPointCut(){}
+
+			@Before(value="myPointCut") 前置
+			@AfterReturning(value="myPointCut",returning="方法第二个参数名") 后置
+			@Around(value="myPointCut") 环绕
+			@AfterThrowing(value="myPointCut",throwing="方法第二个参数名") 抛出异常
+			@After(value="myPointCut") 最终
+		
+			
+	applicationContext.xml配置
+		//需要aop和context命名空间
+		//扫描所有注解
+		<context:component-scan base-package=""></context:component-scan>
+		//根据注解自动生成代理
+		<aop:aspect-autoproxy></aop:aspect-autoproxy>

@@ -1,0 +1,84 @@
+1.分页是什么
+第N页/共M页　首页 上一页 1 2 3 4 5 6 7 8 9 10　下一页 尾页 口go
+	优点：只查询一页，不用一直往下拉
+
+2.分页数据
+	分页数据封装到Bean中，PageBean
+	有成员变量：
+		* pagecode：当前页
+		* totalpage：总页数 注意：没有set方法
+		* pagesize:每页行数
+		* totalrecord：总记录行数 
+		* List<T> beanList:当前页的数据
+		totalpage=totalrecord%pagesize==0?totalrecord/pagesize:totalrecord/pagesize+1
+
+3.实现
+	1)首页，上一页，下一页，尾页：
+	Servlet：
+		* 获取当前页pagecode
+		* 指定pagesize，每也的行数
+		* pagecode和pagesize作为参数传递给service的finAll方法，返回PageBean对象
+		* 将pageBean对象存到request域中，转发到list.jsp
+	Dao:
+		* 得到pagecode和pagesize
+		* 查询数据库得到totalrecord和beanList
+		* 封装PageBean，返回
+	list.jsp：
+		将request域中的pageBean对象数据展示到页面中
+
+	2)页码，1 2 3 4 5 6 7 8 9 10
+	* 最多显示：10页
+	* 当前页，首部，尾部
+		10 11 12 13 14 (15) 16 17 18 19
+		- 首部，根据当前页指定 begin=pagecode-5
+		- 尾部，根据当前页指定 end=pagecode+4
+	* 逻辑细节
+		- 总页数小于10，begin=1，end=总页数
+		- 首部溢出：如果pagecode-5<1即begin<1，令begin=1，end=10
+		- 尾部溢出：如果end>totalpage,end=totalpage且，begin=totalpage-9
+	
+	3)下拉框选择页面
+	- list.jsp
+		* list.jsp中添加select标签
+		* select标签上添加js的onchange事件
+		* select标签中做出<c:forEach>循环，begin=1，end=pageBean.totalpage,var=i
+		* 循环中添加<option>选项，option选项上做判断<c:if>如果i=当前页，selected="selected"
+		* option中放置${i}
+	- list.jsp中的js，_change()方法
+		* 获取select标签的id
+		* 令localtion=url地址+&pageBean.pagecode+select.value
+
+4.高级查询
+	当使用高级查询时，第一页查询结果没错，但是点击第二页因为请求后不带条件，所有查询变成了没有请求的查询
+即查询所有数据。所以，我们应该在页面上所有链接中保留条件
+	* 在PageBean中添加url成员变量
+	* 在Servlet中实现对url的保存
+		使用request的getContextPath，getServletPath，getQueryString
+		return contextpath+servletPath+"?"+queryString;
+		注意问题：
+			- 表单请求应改为get方式，因为post不会显示参数,queryString=null
+			//- url的get方式编码问题，先解码再编码new String(cname.getBytes("ISO-8859-1"),"utf-8");
+				此步骤可能会出现问题，有时不加也可以
+			- pagecode当前页面的保存问题，如果url中有pc，应该截取出来
+	* 高级查询中Dao的修改
+		* 保存查询模板
+			- 创建StringBuilder where，初始化为where 1=1
+			- 判断表单数据中各个条件是否有值，有值append(" cname like ?")
+		* 保存参数
+			- 创建List集合
+			- 如果表单数据中有值，add("%"+cname+"%")
+		* 查询所有记录数
+			- 创建sql头，new StringBuilder("select count(*) from t_customer")
+			- 创建String，添加头和身子，countSql.append(" ").append(where).toString()
+			- 调用查询，返回int类型
+		* 查询当前页的记录
+			- 创建sql头，new StringBuilder("select * from t_customer")
+			- 创建sql尾，new StringBuilder("limit ?,?")
+			- 添加头身尾，selectSql.append(" ").append(where).append(" ").append(limitSql).toString()
+			- 添加两个limit语句的参数
+			- 调用方法返回List集合
+		* 创建PageBean对象
+			- 添加pagecode,pagesize,totalrecord,beanList
+		* 返回PageBean对象
+	* 在list.jsp中将超链接的href变成href="${pageBean.url}&pageBean.pagecode=${xxx}"
+

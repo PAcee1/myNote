@@ -1,0 +1,43 @@
+抽象类
+	抽象类声明格式：abstract class xx
+	抽象类特点：1.被abstract修饰
+	
+				2.抽象类中不一定有抽象方法，但有抽象方法一定是抽象类
+				abstract class A{
+					public void B(){}
+				}//可以编译
+				class A{
+					public abstract void B(){}//编译报错，抽象方法不能有方法体
+					public abstract void B();
+				}//编译报错
+				
+				3.抽象类不能实例化
+					a：                                                                                                                                             
+					abstract class A{}
+					class abstractDemo{
+						public static void main(String[] args){
+							A a=new A();//出错
+						}
+					}
+					b:抽象类可以通过多态的方式实例化
+					abstract class A{}
+					class B extends A{}
+					class abstractDemo{
+						public static void main(String[] args){
+							A a=new B();//多态向上转型
+						}
+					}
+					
+				4.抽象类子类
+					a:抽象类子类也应是一个抽象类(不重写抽象方法)
+						abstract class A{}
+						abstract class B extends A{}
+					b:不是抽象类，是具体的类(应该重写抽象方法)
+						abstract class A{
+							public abstract void a{}
+						}
+						class B extends A{
+							public void a{
+								syso("重写");
+							}
+						}

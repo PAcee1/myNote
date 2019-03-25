@@ -1,0 +1,116 @@
+上传(上传不能使用BaseServlet)
+1.上传限制
+	- 上传对表单限制
+	* method必须为post
+	* 需要enctype="multipart/form-data"
+	* 表单中添加文件表单项：<input type="file" ...>
+
+	- 上传对Servlet的限制
+	* 不能使用request.getParameter(name),因为表单添加了enctype="multipart/form-data"
+	* 使用ServletInputStream request.getInputStream();获取整个表单的请求体
+
+2.多部件表单
+	- 添加了enctype="multipart/form-data"后，表单就变成了多部件表单
+	- 多部件表单：每个表单项为一个部件，一个部件由由请求头，空行，请求体组成
+	- 普通表单项：
+		* 一个头：Content-Disposition：包含name="xxx"，即表单项名称。
+		* 体就是表单项的值
+	- 文件表单项：
+		* 两个头：Content-Disposition：包含name="xxxx"，表单项名称；filename="xxx"，表示上传文件的名称
+				  Content-Type：它是上传文件的MIME类型，例如：image/pjpeg，表示上传的是图片。
+
+3.commons-fileupload
+	使用这个jar包配合commons-io.jar解析上传的数据解析后的结果是一个表单项数据封装到一个FileItem对象中。
+我们只需要调用FileItem的方法即可！
+	- 上传三步骤：
+	1.创建工厂：DiskFileItemFactory factory = new DiskFileItemFactory()
+	2.创建解析器：ServletFileUpload sfu = new ServletFileUpload(factory);
+	3.使用解析器解析request：List<FileItem> fileItemList = sfu.parseRequest(req);
+	- FileItem方法
+	  * boolean isFormField()：是否为普通表单项！返回true为普通表单项，如果为false即文件表单项！
+	  * String getFieldName()：返回当前表单项的名称；
+	  * String getString(String charset)：返回表单项的值；
+	  * String getName()：返回上传的文件名称
+	  * long getSize()：返回上传文件的字节数
+	  * InputStream getInputStream()：返回上传文件对应的输入流
+	  * void write(File destFile)：把上传的文件内容保存到指定的文件中。
+	  * String getContentType();
+	
+4.上传的细节
+	1)上传的文件保存在WEB-INF下
+		* 目的不让浏览器直接访问到，如果别人上传.jsp文件，然后再访问，有可能出现不可预料的结果
+		* 通常在WEB-INF目录下创建uploads目录存放文件
+	2)文件名称问题
+		* 有的浏览器(IE6)上传文件名是绝对路径，例如E:\img\a.jpg,这时获取文件名就需要字符串切割
+			String filename = fi.getName();
+			int index = filename.lastIndexOf("\\");//两个\代表一个\
+			if(index != -1){//存在\
+				filename = filename.subString(index+1);
+			}
+		* 文件名乱码或普通表单乱码
+			- 文本文件内容和普通表单项内容使用FileItem类的getString("utf-8")来处理编码
+			- request.setCharacterEncoding("utf-8");fileupload内部会调用//优先级低 
+			- servletFileUpload.setHanderEncoding("utf-8");//优先级高
+				两个方法都可以解决
+		* 文件名重名问题
+			为每个文件添加前缀，且前缀不能相同，使用uuid
+			filename = CommonUtils.uuid()+"_"+fi.getName()
+	3)目录打散
+		目的是不在一个目录下存放很多文件
+		* 首字母打散：使用文件首字母做目录名称
+		* 时间打散：使用当前日期做目录
+		* 哈希打散：常用
+			- 通过文件名获取到int值，调用hashCode()
+			- 使int值转为16进制数
+			- 根据16进制前两位生成目录，例如：1B2C3D4E5F，目录为/1/B/
+			参考WEB22_UpLoad中UpLoadServlet
+	4)上传文件的大小限制
+	  * 单个文件大小限制
+		- servletfileupload.setFileSizeMax(100*1024);//限制单个文件大小为100KB
+		- 上面的方法调用，必须在解析开始之前调用！
+		- 如果上传的文件超出限制，在parseRequest()方法执行时，会抛出异常！FileUploadBase.FileSizeLimitExceededException
+	  * 整个请求所有数据大小限制
+		- servletfileupload.setSizeMax(1024 * 1024);//限制整个表单大小为1M
+		- 这个方法也是必须在parseRequest()方法之前调用
+		- 如果上传的文件超出限制，在parseRequest()方法执行时，会抛出异常！FileUploadBase.SizeLimitExceededException
+	5) 缓存大小与临时目录
+	  * 缓存大小：超出多大，才向硬盘保存！默认为10KB
+	  * 临时目录：向硬盘的什么目录保存
+	  设置缓存大小与临时目录：new DiskFileItemFactory(20*1024, new File("F:/temp"))
+
+下载
+1.下载就是向客户端响应字节数据
+	原来响应的都是html的字符数据
+	把文件变成字节数据，通过response.getOutputStream()响应
+
+2.下载的要求
+	- 两个头一个流
+		* 两个头
+		Content-Type:你传递给客户端文件的MIME类型，例如：image/pjpeg
+			不需要我们记，可以调用ServletContext的getMimeType()方法得到类型
+		Content-Disposition：attachment;filename=xxx,默认为inline，表示在浏览器窗口打开。
+			在filename=后面跟随的是显示在下载框中的文件名称
+		* 流：要下载的文件数据，例如：new FileInputStream()
+
+3.下载设置中文文件名
+	这里的中文名指的是Content-Disposition中filename设置成中文
+	FireFox：Base64编码
+	其他大部分为：URL编码
+
+	* 方案一：通用方案
+		先解码再编码，ISO-8859-1为浏览器可以认识的编码
+		filename = new String(filename.getBytes("GBK"),"ISO-8859-1");
+	* 方案二：判断浏览器类型，根据浏览器类型不同使用base64编码或URL编码
+		public static String filenameEncoding(String filename, HttpServletRequest request)
+			throws IOException {
+			String agent = request.getHeader("User-Agent"); //获取浏览器类型
+			if (agent.contains("Firefox")) {//如果是火狐，使用BASE64编码
+				BASE64Encoder base64Encoder = new BASE64Encoder();
+				filename = "=?utf-8?B?"
+						+ base64Encoder.encode(filename.getBytes("utf-8"))
+						+ "?=";
+			} else {//其他使用URL编码
+				filename = URLEncoder.encode(filename, "utf-8");
+			}
+			return filename;
+		}

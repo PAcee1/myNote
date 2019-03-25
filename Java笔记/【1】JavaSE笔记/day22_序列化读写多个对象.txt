@@ -1,0 +1,82 @@
+Person类用来序列化
+	public class Person implements Serializable{
+		private String name;
+		private int age;
+		public Person(String name, int age) {
+			super();
+			this.name = name;
+			this.age = age;
+		}
+	}
+	
+方法一：存入文件时，将几个对象放入一个Object[] 数组中，然后再读取。
+	private static void read() throws ClassNotFoundException, IOException {
+		//创建序列化流对象
+		ObjectInputStream ois = new ObjectInputStream(new FileInputStream("Object.txt"));
+		//读出
+		Object[] objArr =(Object[])ois.readObject();
+		for(Object obj : objArr) {
+			System.out.println(obj);
+		}	
+		ois.close();
+	}
+
+	private static void write() throws IOException {
+		//创建序列化流对象
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("Object.txt"));		
+		//创建对象
+		Person[] p = {new Person("Mike",22), new Person("Like",44)};
+		//存入
+		oos.writeObject(p);
+		oos.close();
+	}
+	
+方法二：一个一个放入，需要写完对象后加入null作为结束标志
+	private static void read() throws ClassNotFoundException, IOException {
+		//创建序列化流对象
+		ObjectInputStream ois = new ObjectInputStream(new FileInputStream("Object.txt"));		
+		Object obj =null;
+		while((obj=ois.readObject())!=null) {
+			System.out.println(obj);
+		}	
+		ois.close();
+	}
+
+	private static void write() throws IOException {
+		//创建序列化流对象
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("Object.txt"));	
+		//创建对象
+		Person p1 = new Person("Mike",22);
+		Person p2 = new Person("Like",44);
+		//存入
+		oos.writeObject(p1);
+		oos.writeObject(p2);
+		oos.writeObject(null);//加入null 用来判断是否到末尾，如果不加会报错EOFException 
+		oos.close();
+	}
+	
+方法三：用available判断是否达到了文件末尾
+	private static void read() throws ClassNotFoundException, IOException {
+		//创建序列化流对象
+		FileInputStream fis = new FileInputStream("Object.txt");
+		ObjectInputStream ois = new ObjectInputStream(fis);	
+		//读取
+		Object obj =null;
+		while(fis.available()>0) {
+			obj=ois.readObject();
+			System.out.println(obj);
+		}	
+		ois.close();
+	}
+
+	private static void write() throws IOException {
+		//创建序列化流对象
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("Object.txt"));		
+		//创建对象
+		Person p1 = new Person("Mike",22);
+		Person p2 = new Person("Like",44);
+		//存入
+		oos.writeObject(p1);
+		oos.writeObject(p2);
+		oos.close();
+	}

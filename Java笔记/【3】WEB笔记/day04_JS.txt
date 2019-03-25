@@ -1,0 +1,42 @@
+事件对象总结
+	onfocus/onblur:聚焦离焦事件，用于表单校验
+	onclick/ondblclick:鼠标单击双击事件
+	onkeydown/onkeypress：键盘按下或按住事件，搜索引擎使用较多
+	onload:页面加载事件，所有其他操作（匿名方式）都可以放到这个绑定函数中
+	onmousemove/onmouseover/onmouseout:鼠标一些事件，用于高亮显示，网站商品详情
+	onsubmit：表单提交事件，有返回值判断表单是否提交
+	onchange:select选择使用，元素改变事件
+	
+JS内置对象
+	Array
+		创建对象：new Array();
+				  new Array(size);
+				  new Array(element0,ele1,ele2...);
+		特点：长度可变，长度=index+1；
+	Boolean
+		创建对象：new Boolean(value);构造函数
+				  Boolean(value);转换函数
+				不传value默认false
+	Date
+		getTime();//返回1970年1月1日至今的毫秒数,解决浏览器缓存问题
+	Math,number 与java基本一致
+	String
+		match();//找到一个或多个正则表达式的匹配。
+		substr();//从起始索引号提取字符串中指定数目的字符。
+		substring(); //提取字符串中两个指定的索引号之间的字符。
+
+	RegExp	正则表达式对象
+		test;//检索字符串中指定的值。返回 true 或 false。
+
+JS全局对象
+	decodeURI(); //解码某个编码的URI。
+	decodeURIComponent(); //解码一个编码的URI组件。 
+	encodeURI(); //把字符串编码为URI。
+	encodeURIComponent(); //把字符串编码为URI组件。 
+	eval(); //计算JavaScript字符串,并把它作为脚本代码来执行 
+	parseFloat(); //解析一个字符串并返回一个浮点数。
+	parseInt(); //解析一个字符串并返回一个整数。 
+
+
+
+	

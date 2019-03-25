@@ -1,0 +1,232 @@
+一、事务
+	在数据库中，事务可以是一条sql语句，事务也可以是多条sql语句，或整个程序
+1.1 事务的四大属性
+	原子性：一个事务内的操作时不可分割的，要么都做要么都不做
+	一致性：事务是从一个一致状态到另一个一致状态，例如转账，无论是否成功，两个账号余额之和不变
+	隔离性：并发操作中，不同事务不会相互干扰
+	持久性：事务一旦提交，数据库中数据的改变是永久的，如果崩溃有办法恢复
+1.2 Mysql事务的开启和提交
+	开启：start transaction
+	提交：commit：提交，数据发生改变
+		  rollback：回滚，事务操作无效，回到开启事务前的状态
+1.3 JDBC事务
+	同一事务的所有操作，需要使用同一个Connection对象
+	开启事务：conn.setAutoCommit(false),true表示自动提交，false表示手动提交
+	提交事务：conn.commit()
+	回滚事务:conn.rollback()
+	代码格式：
+		try{
+			conn.setAutoCommit(false);
+			·········
+			sql操作语句
+			·········
+			conn.commit();
+		}catch{
+			conn.rollback();
+		} 注意：代码运行正确但数据库没有变动一般为sql语句出错
+1.4 事务隔离级别
+	并发事务问题：
+	* 脏读：读取脏数据，即读到另一个事务尚未提交的数据 
+	* 不可重复读：对同一记录读取两次，数值不同，可能因为另一个事务第二次读前修改了数据
+	* 幻读，虚读：对同一张表查询两次不同，另一个事务插入了数据
+	四大隔离级别：
+	* SERiALIZABLE 串行化：不会有任何问题，性能差
+	* REPEATABLE READ 可重复读：防止脏读和不可重复读，不能处理幻读，性能中等(Mysql默认)
+	* READ COMMITED 读已提交数据：防止脏读，不能处理不可重复读，幻读，性能中等(Oracle默认)
+	* READ UNCOMMITED 读未提交数据：会出现所有问题，性能最好
+	MySQL：
+		查询隔离级别：select @@tx_isolation;
+		设置隔离级别：set transaction isolationlevel[];
+	JDBC:
+		设置：con. setTransactionIsolation(int level)
+			参数：Connection.TRANSATION_XXX；
+
+二、数据库连接池
+	用池来管理Connection，每次需要连接去池里拿，不用我们自己创建，当不需要使用时调用close()
+方法，也不会真的关闭Connection对象，而是归还给池，节省大量资源提高效率。
+	接口：javax.sql.DataSource，各个厂商实现此接口，方便程序切换
+2.1 DBCP 底层是装饰者模式
+	Apache的开源免费连接池
+	jar包：commons-dbcp-1.4.jar&commons-pool-1.3.jar
+	2.1.1 配置信息：
+		必要配置：
+		* driverClassName：数据库驱动名称
+		* url：数据库的地址
+		* username：用户名
+		* password：密码
+		扩展配置：
+		* initialSize：初始池大小
+		* maxActive：最大连接数量
+		* minIdle：最小空闲时间
+		* maxIdle：最大空闲时间
+		* maxWait：最大等待时间
+	2.1.2 获取连接步骤：
+		- 创建DataSource对象，使用BasicDataSource
+		- 配置四大参数和连接池参数
+		- dataSource.getConnection()获取连接
+	2.1.3 注意
+		** 得到的Connection其实是mysql驱动提供的，连接池只起到装饰作用，里面的方法只对close()进行增强
+		** close方法不再是关闭连接，而是把连接归还给池
+
+2.2 C3P0 底层是动态代理
+	jar包：c3p0-0.9.2-pre1.jar&mchange-commons-0.2.jar|c3p0-oracle-thin-extras-0.9.2-pre1.jar(oracle数据库才使用)
+	2.2.1 获取连接
+		ComboPooledDataSource ds = new ComboPooledDataSource();
+		Connection conn = ds.getConnection();
+	2.2.2 配置信息
+		四大配置信息：
+		* ds.setJdbcUrl("jdbc:mysql://localhost:3306/mydb1");
+		* ds.setUser("root");
+		* ds.setPassword("123");
+		* ds.setDriverClass("com.mysql.jdbc.Driver");
+		扩展配置：
+		* ds.setAcquireIncrement(5);//增量为5，每次创建连接数以5为单位
+		* ds.setInitialPoolSize(20);//初始大小
+		* ds.setMinPoolSize(2);//最小连接数
+		* ds.setMaxPoolSize(50);//最大连接数
+	2.2.3 三种配置方式
+		1)在java文件中使用setXxx配置
+		2)创建c3p0.properties文件(名称不能错)里配置
+			c3p0.driverClass=com.mysql.jdbc.Driver
+			c3p0.jdbcUrl=jdbc:mysql://localhost:3306/exam
+			c3p0.user=root
+			c3p0.password=root
+		3)创建c3p0-config.xml文件(名称不能错)里配置
+		<c3p0-config>
+			<!-- 默认配置，创建DataSource时无参即使用默认配置 -->
+			<defalut-config>
+				<property name="driverClass">com.mysql.jdbc.Driver</property>
+				····
+			</defalut-config>
+			<!-- 带参构造方法new ComboPooledDataSource("aaa") -->
+			<named-config name="aaa">
+				<property name="driverClass">com.mysql.jdbc.Driver</property>
+				····
+			</named-config>
+		</c3p0-config>
+2.4 Tomcat配置连接池 
+	JNDI：java命名和目录接口，在服务器上配置资源，通过固定的方式起来获取资源
+	即配置数据库连接池资源，在这个项目里所有类中都可以通过JNDI获取连接池资源
+	2.4.1 配置方式
+		在Tomcat/conf/Catalina/localhost下创建一个项目名.xml文件
+		<Context>
+			<Resource name="jdbc/myc3p0"
+					  factory="org.apache.naming.factory.BeanFactory"
+					  type="com.mchange.v2.c3p0.ComboPooledDataSource"
+					  driverClass="com.mysql.jdbc.Driver"
+					  jdbcUrl="jdbc:mysql://localhost:3306/exam"
+					  user="root"
+					  password="root"
+					  acquireIncrement="5"
+					  initialPoolSize="10"
+			/>
+		</Context>
+		name:随便起名字，在获取资源时会用到，资源的名称
+		factory：固定的，用来创建资源的工厂
+		type：资源的类型，导入的包名，即连接池包名
+	2.4.2 获取方式
+	方式一：
+		1)获取上下文Context对象,javax.naming下的Context
+			Context cxt = new InitialContext();
+		2)查找入口,固定值java:comp/env
+			Context env = (Context)cxt.lookup("java:comp/env");
+		3)获取资源,根据Resource里name名称
+			DataSource ds = (DataSource)env.lookup("jdbc/myc3p0");
+	方式二：
+		1)获取上下文Context对象
+			Context ctx = new InitialContext()
+		2)获取数据库连接池
+			DataSource ds = (DataSource)ctx.lookup("java.comp/env/jdbc/myc3p0");
+	注意:别忘了导包
+
+三、ThreadLocal
+3.1 简介
+	ThreadLocal通常用在一个类的成员上
+	多个线程访问它，每个线程都有自己的副本，互不干扰
+	Spring中把Connection放到ThreadLocal中
+3.2 ThreadLocal的三种方法：
+		* set(T value)
+		* get()
+		* void remove()
+3.3 ThreadLocal原理
+	内部是一个特殊的Map，特殊在使用Thread作为键，HashMap<Thread,T>
+	class MyThreadLocal<T> {
+		private Map<Thread,T> map = new HashMap<Thread,T>();
+		public void set(T value) {
+			map.put(Thread.currentThread(), value);
+		}
+		
+		public void remove() {
+			map.remove(Thread.currentThread());
+		}
+		
+		public T get() {
+			return map.get(Thread.currentThread());
+		}
+	}
+	在不同线程中使用ThreadLocal为不同的副本操作
+
+四、DBUtils
+	jar包：common-dbutils.jar
+	帮助我们简化数据库连接，增删改查操作
+	核心类：QueryRunner，ResultSetHandler
+4.1 DBUtils原理	底层使用了反射
+    山寨dbutils
+	* 创建一个类，有其方法update(sql,Object... param)，query(sql,rs,Object... param)
+	* 成员变量 DataSource，并有对应的构造方法
+	* update实现
+		- 通过dataSource获取连接，创建PreparedStatement对象
+		- 放置sql语句
+		- 写一个方法循环添加变量
+			initParams(PreparedStatement pstmt, Object... params) throws SQLException {
+				for(int i=0;i<params.length;i++){
+					pstmt.setObject(i+1, params[i]);
+				}
+			}
+		- 执行executeUpdate()
+	* query实现
+		- 步骤和update差不多，多了一个结果集接口
+		interface RsHandler<T>{
+			public T handler(ResultSet rs) throws SQLException;
+		}
+		- 最后使用结果集接口的handler方法转换成不同的结果集
+4.2 QueryRunner
+	* update(String sql, Object... params)：DDL、DML
+	* query(String sql, ResultSetHandler rsh, Object... params)：DQL
+	- 增删改操作：
+		public void fun_insert() throws SQLException{
+			QueryRunner qr = new QueryRunner(JDBCUtils2.getDataSource());
+			String sql = "insert into stu value(?,?,?,?)";
+			Object[] param = {02,"lisi",22,"high"};
+			qr.update(sql, param);
+		}
+	- 查询操作：
+		public void fun_select() throws SQLException {
+			QueryRunner qr = new QueryRunner(JDBCUtils2.getDataSource());
+			String sql = "select * from stu where sid=?";
+			Object[] params = {01};
+			/*
+			 * 对结果集的处理
+			 * Stu stu = (Stu)qr.query(sql, new BeanHandler<Stu>(Stu.class), params);
+			 */
+			System.out.println(stu);
+		}
+4.3 ResultSetHandler
+	接口，用于定义select操作后封装结果集，常用有八大实现类
+	ArrayHandler:用数组接收查询的第一行结果
+		Object[] result = qr.query(conn, sql, new ArrayHandler(),params);
+	ArrayListHandler:用List集合接收多个查询后每行结果的数组对象
+		List<Object[]> result = qr.query(conn, sql, new ArrayListHandler(), params);
+	BeanHandler:用一个Bean类接收查询的第一行结果(Bean为自己创建的一个类)
+		Bean result = qr.query(conn, sql,new BeanHandler<Bean>(Bean.class),params);
+	BeanListHandler:用List集合接收多个查询后每行结果的Bean类对象
+		List<Bean> result = qr.query(conn, sql, new BeanListHandler<Bean>(Bean.class), params);
+	ColumnListHandler:用List集合接收查询的列信息
+		List<Object> result = qr.query(conn, sql, new ColumnListHandler<>("sname"), params);
+	ScalarHandler:用普通基本类型或引用类型变量接收一个查询结果
+		long result = qr.query(conn, sql, new ScalarHandler<>(), params);
+	MapHandler:用Map集合接收查询的第一行结果，键为列名，值为第一行对应数据
+		Map<String, Object> result = qr.query(conn, sql, new MapHandler(), params);
+	MapListHandler:用List集合接收多个查询后每行结果的Map对象
+		List<Map<String,Object>> result = qr.query(conn, sql, new MapListHandler(), params);
+	

@@ -1,0 +1,80 @@
+一、实现Runnable接口
+	a:创建MyThread类实现Runnable接口
+	b:重写run()方法
+	c:创建MyThread类对象
+	d:创建Thread类将MyThread类对象传递
+	
+二、设置线程名称：
+	//Thread.getName();
+	由于实现接口的方式就不能直接使用Thread类的方法了，但是可以间接使用
+	Thread.currentThread().getName();
+	
+	更改名称：
+	MyRunnable my = new MyRunnable();
+	1.Thread th = new Thread(my);
+	  th.setName("线程一");
+	
+	2.Thread th = new Thread(my,"线程一");	
+	
+三、实现Runnable接口好处：
+	a:可以避免Java单继承的局限性
+	b:适合多个相同程序代码去处理同一个资源，把线程和程序的代码区别开
+		  提现面向对象设计原则。	
+
+四、匿名内部类实现
+public class ThreadDemo {
+	public static void main(String[] args) {
+		new Thread(new Runnable() {
+			public void run() {
+				for(int i=0;i<20;i++) {
+					System.out.println(Thread.currentThread().getName()+":"+i);
+				}	
+			}	
+		}) {}.start();
+	}
+}
+	注意：如果Runnable中有方法，Thread里也有，运行的是Thread里的线程。	
+	
+五电影院卖票程序的实现
+public class MyRunnable implements Runnable{
+	private int tickets=100;
+	private Object obj = new Object();
+	
+	public void run() {
+		while(true) {
+			synchronized(obj) {
+				if(tickets>0) {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+					System.out.println(Thread.currentThread().getName()+"出售："+tickets--);
+					
+				}else {
+					break;
+				}
+			}
+		}
+	}
+}
+
+public class SellTicketDemo {
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		MyRunnable my = new MyRunnable();
+		Thread th1 = new Thread(my);
+		Thread th2 = new Thread(my);
+		Thread th3 = new Thread(my);
+		
+		th1.setName("窗口1");
+		th2.setName("窗口2");
+		th3.setName("窗口3");
+		
+		th1.start();
+		th2.start();
+		th3.start();
+	}
+}		  

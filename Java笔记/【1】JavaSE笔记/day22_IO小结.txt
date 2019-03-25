@@ -1,0 +1,45 @@
+IO流
+	|--字节流
+		|--字节输入流
+			InputStream
+				int read():一次读取一个字节
+				int read(byte[] bys):一次读取一个字节数组
+		
+				|--FileInputStream
+				|--BufferedInputStream
+					
+		|--字节输出流
+			OutputStream
+				void write(int by):一次写一个字节
+				void write(byte[] bys,int index,int len):一次写一个字节数组的一部分
+			
+				|--FileOutputStream
+				|--BufferedOutputStream
+					
+	|--字符流
+		|--字符输入流
+			Reader
+				int read():一次读取一个字符
+				int read(char[] chs):一次读取一个字符数组
+					
+				|--InputStreamReader
+					|--FileReader：InputStreamReader的子类便捷类
+				|--BufferedReader
+					String readLine():一次读取一个字符串
+					
+					|--LineNumberReader
+						int getLineNumber(); 获取当前行号
+						void setLineNumber(int line);	设置行号					
+						
+		|--字符输出流
+			Writer
+				void write(int ch):一次写一个字符					
+				void write(char[] chs,int index,int len):一次写一个字符数组的一部分
+					
+				|--OutputStreamWriter
+					|--FileWriter：OutputStreamWriter的子类便捷类
+				|--BufferedWriter
+					void newLine():写一个换行符					
+					void write(String line):一次写一个字符串
+
+	

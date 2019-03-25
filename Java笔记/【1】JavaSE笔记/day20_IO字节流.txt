@@ -1,0 +1,80 @@
+IO流分类：
+	输入流 读取数据
+	输出流 写出数据
+	
+	数据类型：
+		字节流
+			输入流：InputStream
+			输出流：OutputStream
+		
+		字符流
+			输入流：Reader
+			输出流：Writer
+		大多情况下使用字节流，只有文件txt打开可以看懂情况下用字符流	
+		
+FileOutputStream
+	(1)构造方法：
+		FileOutputStream(File file)
+		FileOutputStream(String name)
+
+	(2)操作步骤
+		a:创建字节输出流对象
+		b:调用write()方法
+		c:释放资源
+			
+	(3)代码体现：
+		FileOutputStream fos = new FileOutputStream("fos.txt");
+		fos.write("hello".getBytes());
+		fos.close();
+			
+	(4)要注意的问题?
+		a:创建字节输出流对象做了几件事情?
+			1.调用系统功能创建文件
+			2.创建fos对象
+			3.把fos对象指向这个文件
+			
+		b:为什么要close()?
+			1.让流对象变成垃圾，就可以被垃圾回收器回收了
+			2.通知系统去释放跟该文件相关的资源
+		
+		c:如何实现数据的换行?
+			写入换行符：Windows：\r\n
+						Linux:\n
+						Mac:\r
+
+		d:如何实现数据的追加写入?
+			FileOutputStream(String name,boolean append)
+				append=true，即从文件末尾开始写入
+
+FileInputStream读取数据
+	(1)操作步骤
+		a:创建字节输入流对象
+		b:调用read()方法
+		c:释放资源
+			
+	(2)代码体现：
+		FileInputStream fis = new FileInputStream("fos.txt");
+		
+		//方式1
+		int by = 0;
+		while((by=fis.read())!=-1) {
+			System.out.print((char)by);	//打印有缺陷，但是拷贝没问题。
+		}
+		
+		//方式2
+		byte[] bys = new byte[1024];	//1024相当于1k的数据
+		int len = 0;	//返回读取的字节总数
+		while((len=fis.read(bys))!=-1) {	//如果达到末尾，退出循环
+			System.out.print(new String(bys,0,len));
+		}
+			
+		fis.close();
+
+练习：
+	2种实现
+		A:复制文本文件
+		B:复制图片
+		C:复制视频
+
+
+	

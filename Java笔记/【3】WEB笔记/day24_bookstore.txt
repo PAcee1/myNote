@@ -1,0 +1,356 @@
+网上图书商城(MVC)
+
+********************* 前台 *********************
+	用户模块：mvc
+		注册，激活，登录，退出
+	分类模块：mvc
+		全部分类
+	图书模块：mvc
+		查看所有图书，按分类查看图书，查看图书详情
+	购物车模块：只有domain和Servlet
+		添加购物车条目，查看我的购物车，清空购物车，删除指定图书
+	订单模块：mvc
+		生成订单，查看所有订单，付款(按id查询订单)，确认收货
+
+具体实现：
+一、用户模块
+1.1 用户注册：
+	流程：jsps/top.jsp -> jsps/user/regist.jsp -> UserServlet#regist() ->msg.jsp
+	页面：
+		top.jsp:超链接转到regist.jsp
+		regist.jsp：表单页面请求Servlet，传递整个表单参数
+		msg.jsp:显示失败或成功信息
+	Servlet：
+		1.获取表单数据，封装到User对象form中
+		2.补全uid，code激活码
+		3.表单数据校验，判断是否符合规定
+			* 不符合，保存错误信息，保存表单数据(回显)，转发到regist.jsp
+		4.调用Service#regist()，传递form对象
+			* 如果抛出异常
+				保存错误信息，保存表单数据，转发到regist.jsp中
+			* 没有抛出异常
+				** 发送邮件(内容包括超链接，连接到Servlet#active)
+				** 保存正确信息，转发到msg页面
+	Service：
+		1.调用Dao#findByUsername判断是否被注册，是抛出UserException异常
+		2.调用Dao#findByEmail判断邮箱是否被注册，是抛出UserException异常
+		3.调用Dao#add添加user用户，注册成功
+	Dao；
+		1.Dao#findByUsername(String username)：按用户名查找用户
+		2.Dao#findByEmail(String email)：按邮箱查找用户
+		3.Dao#add(User user)：添加用户
+
+1.2 用户激活
+	流程：邮箱超链接 -> UserServlet#active -> msg.jsp
+	Servlet：
+		1.获取超链接中的激活码参数
+		2.使用激活码调用Service#active方法
+			* 如果抛出异常
+				保存错误信息，转发到msg.jsp中
+			* 没有抛出异常
+				保存正确信息，转发到msg页面
+	Service：
+		1.调用Dao#findByCode根据激活码查询用户
+		2.判断用户激活码是否存在，不存在抛出UserException异常
+		3.判断用户状态是否是未激活，已激活抛出UserException异常
+		4.调用Dao#updateState为用户激活
+	Dao：
+		* findByCode(String code):按激活码查询用户
+		* updateState(User user,boolean state)：更新用户状态
+
+1.3 用户登录
+	流程：top.jsp -> login.jsp -> UserServlet#login -> index.jsp
+	Servlet：
+		1.获取表单数据，封装到User中
+		2.判断表单数据是否符合规范
+		3.调用Service#login方法
+			* 如果抛出异常
+				保存错误信息，保存表单数据，转发到login.jsp中
+			* 没有抛出异常
+				** 保存用户到Session域中
+				** (创建购物车到Session域中)
+				** 保存正确信息，转发到index.jsp页面
+		
+	Service：
+		1.调用Dao#findByUsername获取User对象
+		2.判断用户名是否存在，不存在抛出UserException异常
+		3.判断密码是否匹配，不匹配抛出UserException异常
+		4.判断用户状态是否激活，未激活抛出UserException异常
+		5.全部正确返回user对象
+	Dao：
+		findByUsername(String username)
+	
+1.4 用户退出
+	流程：top.jsp -> UserServlet#quit -> index.jsp
+	Servlet:
+		把user的session销毁
+	
+二、分类模块
+查询全部分类：
+	流程：main.jsp -> CategoryServlet#findAll -> left.jsp
+	页面：
+		main.jsp:超链接访问Servlet
+		left.jsp:el表达式和jstl标签循环添加超链接地址
+	Servlet：
+		1.调用service的findAll方法，获取分类集合
+		2.保存categoryList到request域中
+		3.转发到left页面
+	Service：
+		调用Dao#findAll()方法，返回分类集合
+	Dao：
+		findAll()：获取分类集合
+
+三、图书模块
+3.1 查询所有图书
+	流程：left.jsp -> BookServlet#findAll -> book/list.jsp
+	Servlet:
+		1.调用service的findAll方法，获取所有图书集合
+		2.保存图书集合到request域中
+		3.转发到list页面
+	Service:
+		调用Dao#findAll方法
+	Dao:
+		List<Book> findAll():返回所有图书集合
+
+3.2 按分类查询图书
+	流程：left.jsp -> BookServlet#findByCategory -> book/list.jsp
+	Servlet:
+		1.从链接中获取参数cid
+		2.调用service的findByCategory方法传递cid参数，根据分类获取图书集合
+		3.保存图书集合到request域中
+		4.转发到list页面
+	Service:
+		调用Dao#findByCategory(String cid)方法
+	Dao:
+		List<Book> findByCategory(String cid):返回特殊分类的图书集合
+
+3.3 加载图书详细信息
+	流程：left.jsp -> BookServlet#findByCategory -> book/desc.jsp
+	Servlet:
+		1.从链接中获取参数bid
+		2.调用service的findByBid方法传递bid参数，获取指定的图书
+		3.保存此图书到request域中
+		4.转发到desc页面
+	Service:
+		调用Dao#findByBid(String bid)方法
+	Dao:
+		Book findByBid(String bid):返回指定的图书\
+
+四、购物车模块
+	无数据库使用，购物车放在session中保存，购物车中的图书放在Map中保存
+4.1 添加购物车条目
+	流程：book/desc.jsp -> CartServlet#add -> cart/list.jsp
+	Servlet:
+		1.获取session中登录时创建的购物车
+		2.获取表单数据：图书bid，count数量
+		3.通过bid获得book对象(使用BookService#findByBid)
+		4.创建购物车条目CartItem
+		5.向CartItem中添加相应的成员
+		6.向Cart中添加CartItem
+		7.转发到cart/list页面
+	cart/list.jsp:
+		从session域中获取Cart，循环遍历所有的CartItem
+
+4.2 删除指定条目
+	流程：cart/list.jsp -> CartServlet#delete -> cart/list.jsp
+	Servlet:
+		1.获取链接中Book的bid参数
+		2.调用Cart类中的delete(String bid)方法，从map中删除
+		3.转发到list.jsp
+
+4.3 清空条目
+	流程：cart/list.jsp -> CartServlet#clear -> cart/list.jsp
+	Servlet:
+		1.调用Cart类中的clear()方法，清空购物车
+		2.转发到list.jsp
+
+4.4 我的购物车
+	流程：top.jsp -> cart/list.jsp
+	页面：
+		top.jsp:超链接转到cart/list.jsp
+		list.jsp:从session域中获取Cart，循环遍历所有的CartItem
+
+五、订单模块
+domain：
+	Order:
+		private String oid; //订单编号
+		private Date ordertime;	//订单时间
+		private double total;//小计，价格
+		private int state;//状态，未支付，发货，收货，结束
+		private User owner;//订单拥有者，用户
+		private String address;//地址
+		private List<OrderItem> orderItemList;//当前订单下所有条目
+	OrderItem:
+		private String iid;//订单条目编号
+		private int count;//数量
+		private double subtotal;//小计
+		private Order order;//所属订单
+		private Book book;//所要购买的图书
+5.1 生成订单
+	流程：cart/list.jsp -> OrderServlet#add -> desc.jsp
+	Servlet：
+		1.从session中获取User对象
+		2.从session中获取Cart购物车
+		3.创建Order对象，设置Order中所有成员
+		4.创建orderItemList，订单条目集合
+		5.循环Cart中的CartItem对象
+			创建OrderItem
+			设置OrderItem中所有成员
+			向Order中List添加OrderItem
+		6.Order添加orderItemList
+		7.清空购物车
+		8.调用orderService#add(Order order)方法添加订单
+		9.保存Order到request域中，转发到desc.jsp
+	Service：
+		事务添加订单
+	Dao：
+		add(Order order)：添加订单
+		addOrderItemList(List<OrderItem> orderItemList): 添加订单中的条目，使用批处理
+
+5.2 我的订单
+	流程：top.jsp -> OrderServlet#myOrders -> list.jsp
+	Servlet：
+		1.从session中获取User对象
+		2.调用service#findByUid()传递uid参数，获取List<Order>集合
+		3.保存集合到域中，转发到list页面
+	Service：
+		调用Dao#findByUid(String uid)
+	Dao:
+		List<Order> findByUid(String uid):根据uid获取所有的订单
+		loadOrderItem(Order order);循环遍历每个订单，为其添加属于自己的订单条目
+			* 查询两张表，OrderItem和Book，使用MapList接收
+			* 遍历MapList，生成orderitem对象和book对象，最后把book添加到orderitem中合成一个
+		toOrderItemList：遍历map，生成两个对象，合成为一个orderitem对象，并添加到集合中
+
+5.3 加载订单(付款)
+	流程：list.jsp -> OrderServlet#load -> desc.jsp
+	Servlet：
+		1.链接中获取oid参数
+		2.调用service#findByOid()传递oid参数，获取Order对象
+		3.保存order到域中，转发到desc页面
+	Service：
+		调用Dao#findByOid(String oid)
+	Dao:
+		findByOid(String oid):根据oid查找order订单
+
+5.4 确认收货
+	流程：list.jsp -> OrderServlet#confirm -> list.jsp
+	Servlet：
+		1.链接中获取oid参数
+		2.调用service#confirm()传递oid参数
+			* 有异常
+				保存异常信息，转发到msg.jsp
+			* 无异常
+				保存正确信息，转发到msg.jsp
+	Service：
+		1.调用Dao#findState(String oid)，获取Order对象
+		2.判断order对象state状态是否等于3，不是抛出OrderException异常
+		3.调用Dao#updateState(String oid)
+	Dao:
+		findState(String oid)：查询订单状态
+		updateState(String oid):更改订单状态
+
+
+********************* 后台 *********************
+
+一、分类管理
+	所有页面以:/adminjsps/admin/为前缀
+1.1 查看分类
+	流程：left.jsp -> AdminCategoryServlet#findAll -> category/list.jsp
+	AdminCategoryServlet#findAll:
+		1.调用service获得所有分类List<Category>
+		2.保存到request域，转发到category/list.jsp
+
+1.2 添加分类
+	流程：left.jsp -> add.jsp -> AdminCategoryServlet#add -> list.jsp
+	AdminCategoryServlet#add
+		1.封装表单数据
+		2.补全cid
+		3.调用service方法完成添加工作
+		4.调用findAll方法
+
+1.3 修改分类
+	两步：加载分类，修改分类
+	第一步：list.jsp -> AdminCategoryServlet#editPre() -> mod.jsp
+	AdminCategoryServlet#editPre():
+		1.获取cid
+		2.通过cid调用service方法，得到Category对象
+		3.保存到request域中，转发到mod.jsp
+	第二步：mod.jsp -> AdminCategoryServlet#edit() ->list.jsp
+	AdminCategoryServlet#edit():
+		1.封装表单数据
+		2.调用service方法完成修改
+		3.调用findAll方法
+
+1.4 删除分类
+	流程：list.jsp -> AdminCategoryServlet#delete() -> list.jsp
+	AdminCategoryServlet#delete():
+		1.获取cid
+		2.调用service方法完成删除
+			* 抛出异常，保存错误信息，转发到msg.jsp
+			* 无异常，调用findAll()方法
+	Service：
+		1.通过cid调用BookDao下findCountByCid方法查询目录下书本数
+		2.如果大于0即目录下有书，抛出异常
+		3.如果没有书，删除
+
+二、图书管理
+2.1 查询所有图书
+	流程：left.jsp -> AdminBookServlet#findAll() -> book/list.jsp
+	AdminBookServlet#findAll()
+		1.调用Service方法，获取所有图书集合
+		2.转发到/adminjsps/admin/book/list.jsp
+
+2.2 加载图书
+	流程：book/list.jsp -> AdminBookServlet#load() -> book/desc.jsp
+	AdminBookServlet#load()
+		1.获取bid参数
+		2.调用service方法，获取图书详情
+		3.获取所有分类categoryList，保存到域中
+		4.存到域中，转发到book/desc.jsp
+	desc.jsp:
+		下拉表单通过遍历categoryList，添加选项
+		添加隐藏属性bid和image，为之后添加，编辑图书做准备
+		添加隐藏method，通过点击删除或修改按钮利用js来调用Servlet中不同方法
+
+2.3 添加图书
+	两步：加载所有分类到add.jsp中显示，添加
+	第一步：加载所有分类到add.jsp中显示
+		left.jsp -> AdminBookServlet#addPre() ->add.jsp
+		AdminBookServlet#addPre()
+			1.获取所有分类categoryList，保存到域中
+			2.存到域中，转发到book/add.jsp
+	第二步：添加
+		add.jsp -> AdminAddBookServlet -> book/list.jsp
+		AdminAddBookServlet:
+			上传三步：
+				创建工厂
+				创建解析器
+				解析request得到表单字段！
+			把表单字段封装到Book对象中
+			保存上传文件，把保存的路径设置给Book的image属性。
+			调用service方法保存Book对象到数据库中
+			调用findAll()
+
+2.4 删除图书
+	流程：book/desc.jsp -> AdminBookServlet#delete() -> book/list.jsp
+	在Book数据库中添加属性del，来判断是否被删除，没被删除为false，删除了为true
+	处理问题：
+		修改BookDao：所有与查询相关的方法，添加where或and del=false条件
+		修稿Book类，添加del属性
+	删除图书：把del改为true
+
+2.5 修改图书
+	流程：book/desc.jsp -> AdminBookServlet#edit() -> book/list.jsp
+	AdminBookServlet#edit()
+		1.获取book对象
+		2.获取category对象
+		3.向book对象中添加category对象
+		4.调用service方法传递book对象
+		5.转发到findAll
+
+三、订单管理
+3.1 查询所有订单
+	流程：left.jsp -> AdminOrderServlet#findAll() -> order/list.jsp
+3.2 按订单状态查询订单
+	流程：left.jsp -> AdminOrderServlet#findByState() -> order/list.jsp

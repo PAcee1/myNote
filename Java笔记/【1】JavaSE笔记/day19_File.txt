@@ -1,0 +1,57 @@
+File(掌握)
+	(1)IO流操作中大部分都是对文件的操作，所以Java就提供了File类供我们来操作文件
+	   文件和目录（文件件）路径名的抽象表示形式
+	(2)构造方法：
+			File(String pathname);
+				File file = new File("E:\\demo\\java.txt");
+			File(String parent,String chile);
+			 (1)File file = new File("E:\\demo","java.txt");
+				
+			 (2)File file = new File("e:\\demo");
+				File file2 = new File(file,"a.txt");
+	
+	(3)File类的功能(自己补齐)
+		A:创建功能
+			public boolean createNewFile();创建文件，如果存在则不创建
+			 注意：如果没有该目录，则会抛出异常
+			public boolean mkdir();创建文件件，如果存在则不创建
+			 注意：如果没有该目录，则会返回false
+			public boolean mkdirs();创建多个文件夹，如果没有父类文件夹，会帮你创建
+			 注意，如果使用该方法 file.mkdirs("E:\\demo\\java.txt");
+				   他会帮你创建名叫java.txt的文件夹，而不是TXT文件。
+				
+		B:删除功能
+			public boolean delete();
+			注意：如果创建或删除文件没写路径，默认在项目路径下
+				  删除功能不走回收站
+			
+		C:重命名功能
+			public boolean renameTO(File dest)
+			 注意：如果路径名相同就是改名。
+			       如果路径名不同就是改名并剪切。
+			 相对路径：路径不以盘符开始，当前路径下
+			 绝对路径：路径以盘符开始，e:\\
+			 
+		D:判断功能
+			public boolean isDirectory(); 判断是否是目录
+			public boolean isFile(); 判断是否是文件
+			public boolean exists(); 判断是否存在
+			public boolean canRead(); 判断是否可读
+			public boolean canWrite(); 判断是否可写
+			public boolean isHidden(); 判断是否隐藏
+			
+		E:获取功能
+			public String getAbsolutePath(); 获取绝对路径
+			public String getPath(); 获取相对路径
+			public String getName(); 获取名称
+			public long length(); 获取长度，字节数
+			public long lastModified(); 获取最后一次修改时间，毫秒值。
+		 
+		F:高级获取功能
+			public String[] list(); 获取指定路径下所有文件或文件夹的名称
+			public File[] listFiles();
+				File file = new File("E:\\");
+				String[] s = file.list();
+				File[] f = file.listFiles();
+		
+		G:过滤器功能	

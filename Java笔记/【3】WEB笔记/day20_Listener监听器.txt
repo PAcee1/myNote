@@ -1,0 +1,99 @@
+JavaWeb监听器
+一、三大组件
+	Servlet，Listener，Filter
+二、监听器简介
+	* 他是一个接口，需要我们实现
+	* 需要注册，例如注册到按钮上
+	* 监听器中的方法，会在特殊的事件发生时调用
+	例如：
+		小偷(事件源)偷东西(事件)，当小偷一下手，警察(监听器)就开始抓捕(监听器中方法)
+
+三、JavaWeb中三大监听器
+3.1	- 事件源：三大域
+	* ServletContext
+		生命周期监听：ServletContextListener，两个方法，在创建和销毁时调用
+			** void contextInitialized(ServletContextEvent sce):创建ServletContext时
+			** void contextDestroyed(ServletContextEvent sce):销毁ServletContext时
+		属性监听：ServletContextAttributeListener，三个方法，在创建，替换，移除属性时调用
+			** void attributeAdded(ServletContextAttributeEvent event):添加属性时
+			** void attributeReplaced(ServletContextAttributeEvent event):替换属性时
+			** void attributeRemoved(ServletContextAttributeEvent event):删除属性时
+			注意：替换属性方法重写中
+				-- 获取原来的值：event.getValue()
+				-- 获取新值：event.getServletContext.getAttribute(event.getName())
+	* HttpSession
+		生命周期监听：HttpSessionListener，两个方法，在创建和销毁时调用
+			** void sessionInitialized(HttpSessionEvent sce):创建ServletContext时
+			** void sessionDestroyed(HttpSessionEvent sce):销毁ServletContext时
+		属性监听：HttpSessionAttributeListener，三个方法，在创建，替换，移除属性时调用
+			** void attributeAdded(HttpSessionAttributeEvent event):添加属性时
+			** void attributeReplaced(HttpSessionAttributeEvent event):替换属性时
+			** void attributeRemoved(HttpSessionAttributeEvent event):删除属性时
+	* ServletRequest
+		生命周期监听：ServletRequestListener，两个方法，在创建和销毁时调用
+			** void requestInitialized(ServletRequestEvent sce):创建ServletContext时
+			** void requestDestroyed(ServletRequestEvent sce):销毁ServletContext时
+		属性监听：ServletRequestAttributeListener，三个方法，在创建，替换，移除属性时调用
+			** void attributeAdded(ServletRequestAttributeEvent event):添加属性时
+			** void attributeReplaced(ServletRequestAttributeEvent event):替换属性时
+			** void attributeRemoved(ServletRequestAttributeEvent event):删除属性时
+3.2 JavaWeb完成编写监听器
+	* 写一个监听器类，要求实现某个监听器接口
+	* 注册，实在web.xml中配置完成注册
+		<listener><listener-class>cn.zhao.Listener</listener-class></listener>
+3.3 事件对象
+	ServletContextEvent：getServletContext()
+	HttpSessionEvent：getHttpSession()
+	ServletRequestEvent：getServletContext()
+						 getServletRequest()
+	----------------------------
+	ServletContextAttributeEvent：
+		* getServletContext()
+		* getName()
+		* getValue()
+	HttpSessionAttributeEvent：
+	ServletRequestAttributeEvent：
+3.4 八大监听器之感知监听(只与HttpSession有关)
+	* 用来添加到JavaBean上，而不是三大域中
+	* 不需要在web.xml中注册
+	- HttpSessionBindingListener：添加到JavaBean上，Bean就知道是否添加到session中了
+		** void valueBound(HttpSessionBindingEvent event):绑定
+		** void valueUnBound(HttpSessionBindingEvent event)：解绑
+	- HttpSessionActivationListener：JavaBean实现该接口，就可以感知自己钝化或活化事件
+		** void sessionWillPassivate(HttpSessionEvent event)：钝化(序列化)
+		** void sessionDidActive(HttpSessionEvent event):活化(反序列化)
+		** session序列化：当服务器关闭时，session中保存的数据会保存在
+			D:\Program Files\Tomcat 7.0\work\Catalina\localhost\项目名下，名为SESSIONS.ser
+			当服务器打开是，ser文件被加载，便从目录消失，这就是session的序列化和反序列化过程
+		** 钝化和活化：
+			& 当session一段时间没用后，服务器将session从内存中取出放到磁盘上，叫钝化
+			& 等下次使用时，再把钝化的对象加载到内存中，类似反序列化，叫活化
+			& 如果Bean对象没有实现Serializable接口，该Bean对象就不能被钝化，只有Session被钝化
+			& 钝化的名称为sessionId.session
+		** 实现步骤
+			1)在tomcat\conf\catalina\localhost目录下设置context文件，添加：
+			<Manager className="org.apache.catalina.session.PersistentManager" maxIdleSwap="1">
+				<Store className="org.apache.catalina.session.FileStore" directory="mysession"/>
+			</Manager>
+			2)创建类，实现HttpSessionActivationListener接口和Serializable接口
+
+四、国际化
+	服务器根据浏览器使用语言，来返回中文或英文界面
+	步骤：
+	1)src下添加res_en_US.properties和res_zh_CN.properties两个配置文件
+	2)jsp中添加代码：
+	 <%
+	 /*
+	 1. 获取Locale，这是由客户端的浏览器提供的Locale
+	 2. 创建ResourceBundle
+	 3. 把所有的语言信息使用rb.getString("xxx")来替换！
+	 */
+	 Locale locale = request.getLocale();
+	 ResourceBundle rb = ResourceBundle.getBundle("res", locale);
+	 %>
+	<h1><%=rb.getString("login") %></h1>
+	<form action="" method="post">
+	<%=rb.getString("username") %>：<input type="text" name="username"/><br/>
+	<%=rb.getString("password") %>：<input type="password" name="password"/><br/>
+	<input type="submit" value="<%=rb.getString("login") %>"/>
+	</form>

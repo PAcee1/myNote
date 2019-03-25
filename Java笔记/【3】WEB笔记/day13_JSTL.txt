@@ -1,0 +1,127 @@
+JSTL
+	JSTL是apache对EL表达式的扩充，是一种标签语言，需要使用taglib指令导入jstl-1.2.jar包
+	<%@ taglib prefix="c" uri="http://java.sun.com/jstl/core"%>
+一、JSTL标签库
+	四大标签库：
+	core：核心标签库，最重要
+	fmt：格式化标签库
+	sql：数据库标签库，过时
+	xml：xml标签库，过时
+
+二、core核心标签库
+2.1 out和set
+	- out
+	* <c:out value="aaa"/>输出aaa字符
+	* <c:out value="${aaa}" default="bbb" escapeXml="true"/>输出域中aaa属性值，没有输出bbb字符
+		value：输出的值，可以是字符串常量，也可以是EL表达式，注意要存在域中
+		default：输出的值为空时，输出default中的值
+		escapeXml：默认为true，将<>;等字符转义
+	- set
+	* <c:set var="a" value="hello" scope="session"/>创建名为a,值为hello的域属性，存在session域中
+		var：变量名
+		value：变量的值，可以是EL表达式
+		scope：要存储的域，默认page
+2.2 remove
+	* <c:remove var="a" scope="session"/>删除session域中名为a的变量
+		var:变量名
+		scope：要删除的域，如果不写则将所有域中该名称的变量删除
+2.3 url
+	* <c:url value="/"/>输出项目名
+	* <c:url value="/AServlet"/>输出/项目名/AServlet
+	* <c:url value="/AServket" var="url" scope="page"/>将url保存到page域中
+	* <c:url value="/AServlet">
+		<c:param name="username" value="张三">
+	  </c:url> 输出URL：/项目名/AServlet?username=%xx%xx%xx%xx%xx%xx
+	  	value:指定路径，在路径前添加项目名
+		var:变量名，一但添加，就不会输出到页面，而是存到域中
+		scope:存储的域，和var一起使用
+		<c:param name="xx" value="xx"> 子标签，给url后添加参数，中文会自动编码
+2.4 if
+	* <c:if test="${not empty a}">
+		<c:out value="${a}"/>
+	  </c:if> 如果a不为空输出a，注意a是域中的a
+2.5 choose
+	* <c:choose>
+		<c:when test="${条件1}">...</c:when>
+		<c:when test="${条件2}">...</c:when>
+		<c:when test="${条件3}">...</c:when>
+		...
+		<c:otherwise>...</c:otherwise>
+	  </c:choose> 相当于if elseif else
+2.6 forEach
+	可以遍历集合数组
+	* <c:forEach var="i" begin="1" end="10">
+		${i}
+      </c:forEach> 计数方式
+	  等同于for(int i=1;i<=10;i++)
+		var：循环变量
+		begin：设置循环变量从几开始。
+		end：设置循环变量到几结束。
+		step：设置步长！等同与java中的i++，或i+=2。step默认为1
+	* <c:forEach item="${strs}" var="str">
+		${str}<br/>
+	  </c:forEach> 等同于for(String str: strs){}
+	  	item：指定循环的数组或集合
+		var：变量名，集合或数组中元素赋值
+	* <c:forEach items="${list }" var="ele" varStatus="vs">
+		${vs.index} ${vs.count } ${vs.first } ${vs.last } ${vs.current }<br/>
+	  </c:forEach> 使用varStatus创建循环状态变量
+	  	index:现在元素下标，0开始
+		count：循环元素的个数
+		first：第一个元素，是则true
+		last：最后一个元素，是则true
+		current：当前元素
+
+三、fmt格式化库
+	* <fmt:formatDate value="" pattern="yyyy-MM-dd HH:mm:ss">
+		value:传一个Date类型变量
+		pattern：输出模板
+	* <fmt:formatNumber value="${num1}" pattern="0.00">
+		保留小数点后2位，它会四舍五入！如果不足2位，以0补位！
+	* <fmt:formatNumber value="${num1}" pattern="#.##">
+		保留小数点后2位，它会四舍五入！如果不足2位，不补位！
+
+四、自定义标签
+	步骤：
+	1)标签处理类(标签也是一个对象，就需要现有类)
+	2)创建tld文件，为xml
+	3)页面中使用taglib指定tld文件位置
+4.1 标签处理类
+	JspTag-Tag-SimpleTag-SimpleTagSupport
+	SimpleTag：
+	* void doTag():执行标签时调用此方法
+	* JspTag getParent()：获得父标签
+	* void setParent(JspTag)：设置父标签
+	* void setJspBody(JspFragment)：设置标签体
+	* void setJspContext(JspContext)：设置jsp上下文对象，儿子是PageContext
+	除了getParent()都是生命周期对象，doTag()会在其他三个方法之后被服务器调用
+
+	SimpleTagSupport
+		实现了SimpleTag接口，其JSPContext和JSPFragment已经设置好了，只需要重写doTag方法
+4.2 创建tld文件
+	其头格式可以参考jstl-1.2.jar包里的c.tld文件
+	在<taglib>标签里添加<tag>标签来设置你的标签名，类位置，标签体类型
+	  <tag>
+		<name>Mytag1</name> //标签名字，在jsp文件中跟在：后使用
+		<tag-class>cn.zhao.tag.Mytag1</tag-class> //写的处理类位置
+		<body-content>empty</body-content> //标签体类型，这里是空类型
+	  </tag>
+4.3 在页面中调用
+	<%@ taglib prefix="z" uri="/WEB-INF/tlds/zhao.tld" %> 注意uri里路径不能错一点
+	<z:Mytag1/>调用
+4.4 标签体内容
+	在<tag>下<body-content>中设置
+	* empty：无标签体
+	* scriptless：只能是EL表达式，也可以是其他标签
+	* JSP：jsp2.0后不再使用，表示标签体内容可以是：java脚本，可以是标签，可以是el表达式
+	* tagdependent：标签体内容不会被执行，而是直接赋值标签处理类！ 没用
+4.5 设置SkipPageException使下面的标签不在执行
+	在doTag()方法中抛出异常SkipPageException，这样服务器看到这个异常会自动跳过本页面后面的内容
+4.6 设置标签属性
+	1)创建标签处理类，在标签处理类中添加属性，即get/set方法
+	2)在tld文件中<tag>设置里<attribute>
+	  	<attribute>
+			<name>test</name> 指定属性名
+			<required>true</required> 指定属性是否为必需的
+			<rtexprvalue>true</rtexprvalue> 指定属性是否可以使用EL
+  		</attribute>

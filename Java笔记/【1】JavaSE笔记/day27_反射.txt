@@ -1,0 +1,60 @@
+类加载器
+	根类加载器 System，String等Java核心类的加载，JRE-lib-rt.jar
+	扩展类加载器 扩展目录的jar包的加载 JRE-lib-ext
+	系统类加载器 JVM启动时加载来自java命令的class文件，自己写的程序。
+
+反射概述：
+	反射机制就是在运行状态中，对任意一个类，都能够知道这个类的所有属性及
+方法；对任意一个对象，都能调用任意的方法或属性。这种动态获取信息及动态调
+用对象方法的功能称作Java语言的反射机制。	
+	就是通过class文件对象，去使用该文件中的成员变量，构造方法，成员方法。
+	
+获取class文件的三种方式
+	1.通过Object类的getClass()方法
+		Person p = new Person(); Class c1 = p.getClass(); 
+	2.数据类型的静态属性class
+		Class c2 = Person.class;
+	3.Class类中的静态方法
+		public static Class forName(String className )
+		Class c3 = Class.forName("day27_ReflectDemo1.Person");//抛异常
+	注意：c1==c2==c3;//true,因为是字节码对象，都是Person类的Class文件对象。
+	开发：使用第三种
+		因为第三种需要的是字符串，字符串更改方便，只需在配置文件中修改。
+		
+通过字节码文件对象使用成员变量，构造方法，成员方法
+	成员变量： Field
+	  public Field[] getFields();获取所有公共成员变量
+	  public Field[] getDeclaredFields(); 获取所有成员变量
+	  public Field getField(String name); 获取单个成员变量
+	  私有： public void setAccessible(boolean flag)
+	
+	构造方法： Constructor
+	  public Constructor[] getConstructor();获取所有公共构造方法
+	  public Constructor[] getDeclaredConstructor(); 获取所有构造方法
+	  public Constructor<T> getConstructor(Class<T>... parameterType);获取单个构造方法
+		私有构造： Constructor con3 = c.getDeclaredConstructor(String.class);
+	
+	成员方法：Method
+	  public Method[] getMethod();获取自己和父类的所有公共方法
+	  public Method[] getDeclaredMethod(); 获取自己所有方法
+	  public Method getMethod(String name,Class<?>... parameterTypes);获取单个方法
+	  私有方法： getMethod con3 = c.getDeclaredgetMethod(String.class);
+	  
+反射案例
+	A:通过反射运行配置文件的内容
+	B:通过反射越过泛型检查
+	C:通过反射给任意的一个对象的任意的属性赋值为指定的值	
+	
+动态代理
+	代理模式是一种常用的设计模式，其目的就是为其他对象提供一个代理以控制
+对某个真实对象的访问。代理类负责为委托类预处理消息，过滤消息并转发消息，
+以及进行消息被委托类执行后的后续处理。
+	Proxy类 提供用于创建动态代理类和实例的静态方法
+		public static Object newProxyInstance(ClassLoader loader,
+                                      Class<?>[] interfaces,
+                                      InvocationHandler h)
+		第一个参数：类加载器
+		第二个：所有接口的Class对象
+		第三个：实现InvocationHandler接口的类对象
+	InvocationHandler接口 是代理实例的调用处理程序实现的接口
+		Object invoke(Object proxy,Method method,Object[] args)

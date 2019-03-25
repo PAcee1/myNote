@@ -1,0 +1,160 @@
+一、JavaScript
+	js是基于对象和事件驱动的语言，应用于客户端，是一种脚本语言
+		基于对象：提供了很多对象，只需拿过来使用即可
+		事件驱动：html是静态页面，js是动态页面效果
+		
+	1.js的特点
+		* 安全性：不可以直接访问本地磁盘
+		* 交互性：信息的动态交互
+		* 跨平台：因为基于浏览器，所以有浏览器即可使用
+				  类似Java基于虚拟机。			  
+	2.js与java区别
+		公司：js是网景公司的，java前身Sun公司现在被Oracle公司收购
+		对象:js基于对象，java面向对象
+		语言：js是弱语言，java强语言，变量全部使用var定义
+		执行：js只需解析就可执行，java需先编译通过才能执行。		
+	3.js的组成
+		ECMAScript：js的核心，(语法语句函数等)
+		DOM：文档对象模型，(整个html页面的内容)
+		BOM：浏览器对象模型，(整个浏览器相关内容)	
+	4.js引入方式
+		外部引入
+			外部写好1.js代码
+			html中<script src="1.js" type="text/javascript"></script>实现调用
+		内部引入
+			直接在html中书写<script></script>			
+	5.ECMAScript语法：
+		区分大小写
+		变量是弱类型的	变量全部由var定义，如果没赋值则不属于任何类型。
+		每行分号可有可无	
+	6.变量类型
+		undefined：变量被声明但是没有赋值
+		boolean
+		number
+		string
+		object：引用类型或null类型 访问的对象不存在-null
+		通过typeof运算符，查看变量类型   typeof(变量名称)
+		所有引用类型都是object
+		通过instanceof 运算符解决typeof对象类型判断问题
+	7.运算符要点
+		Javascript中小数和整数都是数字类型，所以除法中没有整数，会出现小数。
+		字符串与数字相加，是字符串链接，如果相减，字符串直接转换成数字再相减。
+		Boolean类型可以进行运算，false就是0或者null，非0非空是true，默认用1显示。
+	8.js的函数的重载
+		 js里面是否存在重载？(面试题目)
+		（1）js里面不存在重载。
+		（2）但是可以通过其他方式模拟重载的效果 （通过aruguments数组来实现）
+
+二、Dom对象 
+js根据dom可以访问html中所有的元素
+这样才有足够的能力来创建动态HTML
+	dom：document object model,文本对象模型
+	文本：超文本文档(超文本标记文档) xml
+	对象：提供了属性和方法
+	模型：使用属性和方法在操作超文本标记文档
+	
+	Document:整个html文件都成为一个document文档
+	Element:所有的标签都是Element元素
+	Attribute：标签里面的属性
+	Text：标签中间夹着的内容为text文本
+	Node:document、element、attribute、text统称为节点node.
+		-- Node节点对象：这个对象是这些对象的父对象
+		*** 如果在对象里面找不到想要的方法，这个时候到Node对象里面去找
+		
+	document：
+		document.getElementById(); //返回指定id的第一个对象引用
+		document.getElementsByName(); //返回带有name对象集合
+		document.getElementsByTagName(); //返回带有指定标签的对象集合
+		document.createTextNode(); //创建文本节点
+		document.createElement(); //创建元素节点
+	
+	element：
+		element.appendChild(); //向元素添加新的子节点，作为最后一个子节点。
+		element.removeChild(); //从元素中移除子节点。
+		element.replaceChild(); //替换元素中的子节点。
+		element.insertBefore(); //在指定的已有的子节点之前插入新节点。
+		element.firstChild; //返回元素的首个子节点。
+		element.lastChild; //返回元素的最后一个子元素。
+		element.innerHTML; //设置或返回元素的内容。
+		element.setAttribute(); //把指定属性设置或更改为指定值。
+		element.getAttribute(); //返回元素节点的指定属性值。
+
+三、BOM对象
+	一共有五种：Window,Navigator,Screen,History,Location
+	重点掌握：Window,History,Location
+
+Window
+	Window 对象表示浏览器中打开的窗口。
+	对象属性中包含了只读引用的其他四种对象。
+	重要方法：
+		alert() 显示带有一段消息和一个确认按钮的警告框。 
+		prompt() 显示可提示用户输入的对话框。  
+		confirm() 显示带有一段消息以及确认按钮和取消按钮的对话框。 
+		setInterval() 按照指定的周期（以毫秒计）来调用函数或计算表达式。
+			有一个返回值，提供给clearInterval使用
+		clearInterval() 取消由 setInterval() 设置的 timeout。 
+		setTimeout() 在指定的毫秒数后调用函数或计算表达式。
+			有一个返回值，提供给clearTimeout使用
+		clearTimeout() 取消由 setTimeout() 方法设置的 timeout。
+
+History
+	History 对象包含用户（在浏览器窗口中）访问过的 URL。
+	对象属性length,返回访问过url数量
+	对象方法：(可以配合onclick事件与button元素使用)
+		back() 加载 history 列表中的前一个 URL。 
+		forward() 加载 history 列表中的下一个 URL。 
+		go() 加载 history 列表中的某个具体页面。 
+
+Location
+	Location 对象包含有关当前 URL 的信息。
+	对象属性：href 设置或返回完整的 URL。 
+
+四、事件对象总结
+	onfocus/onblur:聚焦离焦事件，用于表单校验
+	onclick/ondblclick:鼠标单击双击事件
+	onkeydown/onkeypress：键盘按下或按住事件，搜索引擎使用较多
+	onload:页面加载事件，所有其他操作（匿名方式）都可以放到这个绑定函数中
+	onmousemove/onmouseover/onmouseout:鼠标一些事件，用于高亮显示，网站商品详情
+	onsubmit：表单提交事件，有返回值判断表单是否提交
+	onchange:select选择使用，元素改变事件
+	
+五、JS内置对象
+	Array
+		创建对象：new Array();
+				  new Array(size);
+				  new Array(element0,ele1,ele2...);
+		特点：长度可变，长度=index+1；
+	Boolean
+		创建对象：new Boolean(value);构造函数
+				  Boolean(value);转换函数
+				不传value默认false
+	Date
+		getTime();//返回1970年1月1日至今的毫秒数,解决浏览器缓存问题
+	Math,number 与java基本一致
+	String
+		match();//找到一个或多个正则表达式的匹配。
+		substr();//从起始索引号提取字符串中指定数目的字符。
+		substring(); //提取字符串中两个指定的索引号之间的字符。
+
+	RegExp	正则表达式对象
+		test;//检索字符串中指定的值。返回 true 或 false。
+
+六、JS全局对象
+	decodeURI(); //解码某个编码的URI。
+	decodeURIComponent(); //解码一个编码的URI组件。 
+	encodeURI(); //把字符串编码为URI。
+	encodeURIComponent(); //把字符串编码为URI组件。 
+	eval(); //计算JavaScript字符串,并把它作为脚本代码来执行 
+	parseFloat(); //解析一个字符串并返回一个浮点数。
+	parseInt(); //解析一个字符串并返回一个整数。 
+
+
+
+	
+	
+	
+
+		
+		
+		
+		

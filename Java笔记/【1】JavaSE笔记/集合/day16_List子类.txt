@@ -1,0 +1,41 @@
+ArrayList（最常用）
+	A:没有特有功能需要学习
+	B:案例
+		a:ArrayList存储字符串并遍历
+		b:ArrayList存储自定义对象并遍历
+		
+Vector(最不常用)
+	A:有特有功能
+		a:添加
+			public void addElement(E obj)		--	add()
+		b:获取
+			public E elementAt(int index)		--	get()
+			public Enumeration<E> elements()	--  iterator()
+					boolean hasMoreElements();
+					Object nextElement();
+		B:案例
+			a:Vector存储字符串并遍历
+			b:Vector存储自定义对象并遍历
+
+LinkedList
+	A:有特有功能	
+		a:添加
+		addFirst()
+			addLast()
+		b:删除
+			removeFirst()
+			removeLast()
+		c:获取
+			getFirst()
+			getLast()
+	B:案例
+		a:LinkedList存储字符串并遍历
+		b:LinkedList存储自定义对象并遍历			
+		
+案例：
+	A:去除集合中的多个字符串的重复元素
+		如果字符串的内容相同，即为重复元素
+	B:去除集合中的多个自定义对象的重复元素
+		如果自定义对象的成员变量值都相同，即为重复元素
+	C:用LinkedList模拟一个栈数据结构的集合类，并测试。 （重点）
+		你要定义一个集合类，只不过内部可以使用LinkedList来实现。		

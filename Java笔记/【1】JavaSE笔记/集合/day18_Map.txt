@@ -1,0 +1,68 @@
+Map集合
+	A：特点
+		1.集合为键值对应关系，类似链表
+		2.键是唯一的，不能重复
+		3.每个键最多映射一个值
+		
+	B：Map和Collection区别：
+		1.Map是双列集合，Collection是单列
+		2.Map键是唯一的，Collection子体系Set唯一
+		3.Map集合数据结构只对键有效，对值无效
+		4.Collection数据结构对元素有效
+		
+	C:Map接口功能概述(自己补齐)
+		A:添加功能
+			V put(K key,V value);
+			注意：
+				添加第一个键，返回的是null
+				如果添加前有键，即修改这个键的值，返回的是修改前键对应的值
+		B:删除功能
+			V remove(Object key);
+			void clear();//删除所有内容
+		C:判断功能
+			boolean containsKey(Object key);//查询是否包含指定键
+			boolean containsValue(Object value);//查询是否包含指定值
+			boolean isEmpty();//判断空
+		D:获取功能
+			V get(Object key);//根据键获取值
+			
+			Set<Map.Entry<K,V>> entrySet();
+				Set<Map.Entry<String,String>> set=map.entrySet();
+				
+			Set<K> keySet();//获取集合所有键
+				Set<String> set=map.keySet();
+				
+			Collection<V> values();//获取集合所有值
+				Collection<String> collection=map.values();
+		E:长度功能	
+			int size();
+			
+	D:Map集合遍历方式
+		1：通过键找值：
+			a：获取所有键的集合
+			b:遍历键的集合，获取对应的值
+			c:根据键找值
+		Map<String,String> map=new HashMap<String,String>();
+		Set<String> set=map.keySet();
+		for(String k:set){
+			String v=map.get(k);
+			System.out.println(k+"--"+v);
+		}
+		
+		2：根据键值对象找键和值
+			a:获取键值对象集合
+			b:根据键值对象获取每个键和对应的值
+			c:遍历
+		Map<String,String> map=new HashMap<String,String>();
+		Set<Map.Entry<String,String>> set=map.entrySet();		
+		for(Map.Entry<String,String> m:set){
+			System.out.println(m.getKey()+"--"+m.getValue());
+		}
+		
+	E：TreeMap
+		二叉树红黑树，保证排序和唯一
+		
+	面试题：HashMap和Hashtable区别	
+			HashMap：线程不安全，效率高，允许null键和null值
+			Hashtable：线程安全，效率低，不允许null键和null值
+			

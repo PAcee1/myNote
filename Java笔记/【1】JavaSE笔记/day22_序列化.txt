@@ -1,0 +1,100 @@
+序列化流 ObjectInputStream，ObjectOutputStream
+1：概念：
+  序列化(ObjectOutputStream)：可以把对象按照刘一样的方式写入文本文件或者在网络中传输
+  反序列化(ObjectInputStream)：把文本文件中或网络中的流对象数据还原成对象		
+
+  
+2:如何实现序列化呢?
+	让被序列化的对象所属类实现序列化接口Serializable。
+	该接口是一个标记接口。没有功能需要实现。
+	
+ 样例代码：
+   对Person类进行序列化及反序列化
+public class Person implements Serializable{
+	private String name;
+	private int age;
+	public Person(String name, int age) {
+		super();
+		this.name = name;
+		this.age = age;
+	}
+	public String toString() {
+		return name+"-"+age;
+	}
+}
+	  
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
+public class ObjectStreamDemo {
+	public static void main(String[] args) throws ClassNotFoundException, IOException {
+		//写对象
+		write();
+		//读对象
+		read();
+	} 
+	
+	private static void read() throws ClassNotFoundException, IOException {
+		//创建序列化流对象
+		ObjectInputStream ois = new ObjectInputStream(new FileInputStream("Object.txt"));		
+		//读出对象
+		//Person p = (Person)ois.readObject();
+		Object obj = ois.readObject();
+		ois.close();
+	}
+
+	private static void write() throws IOException {
+		//创建序列化流对象
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("Object.txt"));
+		
+		//创建对象
+		Person p1 = new Person("Mike",22);
+		
+		//写入对象
+		oos.writeObject(p1);
+		oos.close();
+	} 
+}	
+
+要读取多个对象时，可以看这篇文章：
+
+3:注意问题：
+
+	1.把数据写到文件后，在去修改类会产生一个问题。
+	例如：把下面代码中name修饰符private去掉，再运行read方法时。
+	public class Person implements Serializable{
+		//private String name;
+		String name;
+		private int age;
+			…………
+	}
+	会报错：java.io.InvalidClassException: 
+			ObjectStream.Person; 
+			local class incompatible:
+			stream classdesc serialVersionUID = -2779883197968771335,
+			local class serialVersionUID = 3092123478469526988
+	为什么呢？
+		JVM判断序列化与反序列化的类文件相同的依据是通过类的一个私有属性
+		serialVersionUID来判断的，如果我们没有显示的指定这个属性, 那么
+		JVM会自动使用该类的hashcode值来设置这个属性, 这个时候如果我们对类
+		进行改变(比如说加一个属性或者删掉一个属性)就会导致serialVersionUID不同
+	如何解决该问题呢?
+		在类文件中，给出一个固定的序列化id值。
+		当然这个值可以自己指定, 也可以通过JDK提供的serializer来查看其默认的hashcode值.
+		private static final long serialVersionUID = -1554498678444779698L;
+		而且，这样也可以解决eclipse黄色警告线问题
+
+	2.如果说一个类中有许多的成员变量，有的成员变量我们希望他被序列化
+	但有的成员变量我们不希望他被序列化，这该怎么办呢？
+		使用transient关键字来修饰不想被序列化的成员变量，例：
+	public class Person implements Serializable{
+		private String name;
+		private transient int age;
+			…………
+	}
+	这时再调用read方法打印的是：
+	Mike-0
+	

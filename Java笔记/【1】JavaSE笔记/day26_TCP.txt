@@ -1,0 +1,52 @@
+TCP协议发送和接收数据
+	客户端发送给服务器端，服务器得到信息后反馈
+		服务器端：
+		/*
+		 * 服务器端
+		 * 1.创建接收用的Socket对象
+		 * 2.监听客户端连接，返回Socket对象
+		 * 3.获取输入流，读取数据在控制台
+		 * 4.释放资源
+		 */
+		public class Server {
+			public static void main(String[] args) throws IOException{
+				ServerSocket ss = new ServerSocket(9999);
+				Socket s = ss.accept();
+				InputStream is = s.getInputStream();
+				byte[] b = new byte[1024];
+				int len = is.read(b);
+				String str = new String(b, 0, len);
+				System.out.println(str);
+				
+				//反馈收到信息
+				OutputStream os = s.getOutputStream();
+				os.write("信息已收到".getBytes());
+				s.close();
+				is.close();
+				os.close();
+			}
+		}
+		
+		客户端：
+		/*
+		 * 客户端
+		 * 1.创建Socket对象
+		 * 2.发送数据
+		 * 3.释放资源
+		 */
+		public class Client {
+			public static void main(String[] args) throws IOException{
+				Socket s = new Socket(InetAddress.getLocalHost(), 9999);
+				OutputStream os = s.getOutputStream();
+				os.write("hello,TCPServer".getBytes());
+				//接收反馈
+				InputStream is = s.getInputStream();
+				byte[] b = new byte[1024];
+				int len = is.read(b);
+				System.out.println(new String(b,0,len));
+				
+				s.close();
+				is.close();
+				os.close();
+			}
+		}

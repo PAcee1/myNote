@@ -1,0 +1,142 @@
+1:正则表达式(理解)
+	(1)就是符合一定规则的字符串
+	(2)常见规则
+		A:字符
+			x 字符 x。举例：'a'表示字符a
+			\\ 反斜线字符。
+			\n 新行（换行）符 ('\u000A') 
+			\r 回车符 ('\u000D')
+			
+		B:字符类
+			[abc] a、b 或 c（简单类） 
+			[^abc] 任何字符，除了 a、b 或 c（否定） 
+			[a-zA-Z] a到 z 或 A到 Z，两头的字母包括在内（范围） 
+			[0-9] 0到9的字符都包括
+			
+		C:预定义字符类
+			. 任何字符。我的就是.字符本身，怎么表示呢? \.
+			\d 数字：[0-9]
+			\w 单词字符：[a-zA-Z_0-9]
+				在正则表达式里面组成单词的东西必须有这些东西组成
+
+		D:边界匹配器
+			^ 行的开头 
+			$ 行的结尾 
+			\b 单词边界
+				就是不是单词字符的地方。
+				举例：hello world?haha;xixi
+			
+		E:Greedy 数量词 
+			X? X，一次或一次也没有
+			X* X，零次或多次
+			X+ X，一次或多次
+			X{n} X，恰好 n 次 
+			X{n,} X，至少 n 次 
+			X{n,m} X，至少 n 次，但是不超过 m 次 
+	(3)常见功能：(分别用的是谁呢?)
+		A:判断功能
+			String类的public boolean matches(String regex)
+		B:分割功能
+			String类的public String[] split(String regex)
+		C:替换功能
+			String类的public String replaceAll(String regex,String replacement)
+		D:获取功能
+			Pattern和Matcher
+				Pattern p = Pattern.compile("a*b");
+				Matcher m = p.matcher("aaaaab");
+				
+				find():查找存不存在
+				group():获取刚才查找过的数据
+	(4)案例
+		A:判断电话号码和邮箱
+		B:按照不同的规则分割数据
+		C:把论坛中的数字替换为*
+		D:获取字符串中由3个字符组成的单词
+	
+2:Math(掌握)
+	(1)针对数学运算进行操作的类
+	(2)常见方法(自己补齐)
+		A:绝对值
+		B:向上取整
+		C:向下取整
+		D:两个数据中的大值
+		E:a的b次幂
+		F:随机数
+		G:四舍五入
+		H:正平方根
+	(3)案例：
+		A:猜数字小游戏
+		B:获取任意范围的随机数
+	
+3:Random(理解)
+	(1)用于产生随机数的类
+	(2)构造方法:
+		A:Random() 默认种子，每次产生的随机数不同
+		B:Random(long seed) 指定种子，每次种子相同，随机数就相同
+	(3)成员方法:
+		A:int nextInt() 返回int范围内的随机数
+		B:int nextInt(int n) 返回[0,n)范围内的随机数
+
+4:System(掌握)
+	(1)系统类,提供了一些有用的字段和方法
+	(2)成员方法(自己补齐)
+		A:运行垃圾回收器
+		B:退出jvm
+		C:获取当前时间的毫秒值
+		D:数组复制
+
+5:BigInteger(理解)
+	(1)针对大整数的运算
+	(2)构造方法	
+		A:BigInteger(String s)
+	(3)成员方法(自己补齐)
+		A:加
+		B:减
+		C:乘
+		D:除
+		E:商和余数
+
+6:BigDecimal(理解)
+	(1)浮点数据做运算，会丢失精度。所以，针对浮点数据的操作建议采用BigDecimal。(金融相关的项目)
+	(2)构造方法
+		A:BigDecimal(String s)
+	(3)成员方法：
+		A:加
+		B:减
+		C:乘
+		D:除
+		E:自己保留小数几位
+
+7:Date/DateFormat(掌握)
+	(1)Date是日期类，可以精确到毫秒。
+		A:构造方法
+			Date()
+			Date(long time)
+		B:成员方法
+			getTime()
+			setTime(long time)
+		C:日期和毫秒值的相互转换
+		案例：你来到这个世界多少天了?
+	(2)DateFormat针对日期进行格式化和针对字符串进行解析的类，但是是抽象类，所以使用其子类SimpleDateFormat
+		A:SimpleDateFormat(String pattern) 给定模式
+			yyyy-MM-dd HH:mm:ss
+		B:日期和字符串的转换
+			a:Date -- String
+				format()
+				
+			b:String -- Date
+				parse()
+		C:案例：
+			制作了一个针对日期操作的工具类。
+	
+8:Calendar(掌握)
+	(1)日历类，封装了所有的日历字段值，通过统一的方法根据传入不同的日历字段可以获取值。
+	(2)如何得到一个日历对象呢?
+		Calendar rightNow = Calendar.getInstance();
+		本质返回的是子类对象
+	(3)成员方法
+		A:根据日历字段得到对应的值
+		B:根据日历字段和一个正负数确定是添加还是减去对应日历字段的值
+		C:设置日历对象的年月日
+	(4)案例：
+		计算任意一年的2月份有多少天?

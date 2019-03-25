@@ -1,0 +1,136 @@
+一、服务器请求处理流程
+	1)浏览器发出请求，服务器接收请求，开辟一个线程处理该请求
+	2)服务器将该请求封装到request对象，request就是请求的载体
+	3)服务器还会创建一个response对象，与浏览器连接，用来做出响应
+
+二、HttpServletResponse
+2.1 http响应应该包含的内容
+	响应行：http版本信息 状态码
+	响应头：多个键值对组成
+	空行
+	响应体：向浏览器发送的内容
+2.1 Response之状态码
+	状态码：200-成功，302-重定向，404-客户端出错，访问资源不存在，500-服务器出错
+	* sendError(int sc)		-- 发送错误状态码，如404,500
+	* sendError(int sc,String msg)	-- 发送错误状态码，带一个错误信息
+	* setStatus(int sc)	-- 发送成功的状态码，可以发302
+	>案例：发送404，带一个错误信息
+2.2 Response之响应头
+	响应头为键值对存储，有的头一键对应一值，也可以有头一键对应多值(越来越少)
+	* setHeader(String name,String value); //适用于单值响应头
+		response.setHeader("Loaction", "/WEB10_Servlet/AServlet");
+	------ 上面一个最重要，下面的不是特别重要 ------
+	* addHeader(String name,String value); //适用于多值响应头
+		response.addHeader("aaa", "A");
+		response.addHeader("aaa", "AA");
+		response.addHeader("aaa", "AAA");
+	* setIntHeader(String name,int value); //适用于值为int类型的响应头
+	* addIntHeader(String name,int value); //适用于多值int类型响应头
+	* setDateHeader(String name,long value); //适用于单值毫秒类型响应头
+	* addDateHeader(String name,long value); //适用于多值毫秒类型响应头
+	>案例：发送302重定向，设置Loaction头。
+		- 还可以使用sendRedirect(String loaction)来完成重定向
+	>案例：设置Refresh头，完成定时转到另一个页面
+	>案例：禁用浏览器缓存：Cache-Control、param、expires
+	- 可以在html中用<meta>标签代替响应头
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+2.3 Response之响应体：通常是html，也可以是图片
+	response的输出流
+		* PrintWrite	字符流
+		* ServletOutputStream	字节流
+		注意：两个流在一个Servlet中只能使用一个，不能同时使用！
+	>案例：使用PrintWrite发送字符数据
+	>案例：使用ServletOutputStream发送图片
+
+三、HTTPServletRequest
+	封装了客户端所有的请求数据！
+	请求行、请求头、空行、请求体（GET没体）
+3.1 获取常用信息
+	* getRemoteAddr();//获取客户端IP，案例：封IP
+	* getMethod();//请求方式
+3.2 获取Http请求头
+	*** String getHeader(String name); 最常用
+	* int getIntHeader(String name)，适用于单值int类型的请求头
+　　* long getDateHeader(String name)，适用于单值毫秒类型的请求头
+　　* Enumeration<String> getHeaders(String name)，适用于多值请求头
+	>案例：通过User-Agent识别用户浏览器类型
+	>案例：防盗链，如果请求不是通过本站的超链接发出的，发送错误状态码404。使用Referer。
+3.3 获取请求URL
+	http://localhost:8080/day10_2/AServlet?username=xxx&password=yyy
+	* String getScheme()：获取协议，http
+　　* String getServerName()：获取服务器名，localhost
+　　* String getServerPort()：获取服务器端口，8080
+　　***** String getContextPath()：获取项目名，/day10_2
+　　* String getServletPath()：获取Servlet路径，/AServlet
+　　* String getQueryString()：获取参数部分，即问号后面的部分。username=xxx&password=yyy
+　　* String getRequestURI()：获取请求URI，等于项目名+Servlet路径。/day10_2/AServlet
+　　* String getRequestURL()：获取请求URL，等于不包含参数的整个请求路径。http://localhost:8080/day10_2/AServlet
+3.4 获取请求参数
+	请求参数是由浏览器发送给服务器的，以Post或Get形式传送
+	* String getParameter(String name);//获取指定名称的请求参数值
+	* String[] getParameterValues(String name);//获取指定名称的请求参数数组，多用于多选按钮
+	* Enumeration<String> getParameterNames();//获取所有请求参数的名称
+	* Map<String,String[]> getParameterMap();//获取所有参数名和参数值，键值对形式
+	>案例：超链接数据
+	>案例：表单数据
+3.5 请求转发和请求包含
+	请求转发和包含都需要RequestDispatcher对象
+	RequestDispacher rd = request.getRequestDispatcher("/MyServlet")
+	请求转发
+		- 指AServlet做不了这个功能，需要找BServlet代做
+		- rd.forward(request,response)调用该方法
+		- AServlet只保留响应头，响应体由BServlet提供，如果再AServlet中设置响应体，浏览器上不会显示
+		- 注意，BServlet的响应头也会保留
+	请求包含：
+		- 指AServlet只会做一些功能，需要找BServlet一起完成这个项目
+		- 调用rd.include(request,response)
+		- AServlet既保留响应头，又保留响应体，即浏览器中显示A和B两者的响应体
+		- 注意，BServlet的响应头不会保留
+3.6 request域
+	* setAttribute(String name,Object value)
+	* getAttribute(String name)
+	* removeAttribute(STring name)
+	同一请求范围内使用request.setAttribute(),request.getAttribute()来传值！
+	前一个Servlet调用setAttribute()保存值，后一个Servlet调用getAttribute()获取值。
+	注意：request域生命周期：一次访问，即访问时发出request，持续到请求处理完成结束。
+		  request域作用范围：整个Request。
+		  ServletContext域生命周期：整个服务器开始结束时间。
+		  ServletContex域作用范围：整个Web项目
+3.7 请求转发和重定向的区别
+	浏览器响应：请求转发只有一次请求一次响应,重定向有两次请求两次响应
+	浏览器地址栏：请求转发地址栏没有变化，重定向地址栏有变化
+	范围：请求转发只能在本项目各个Servlet中转发，重定向可以转发到其他项目或外网
+	参数：请求转发的参数只有Servlet路径，重定向是requestURI路径，即包含项目名
+	获取数据：请求转发的下一个Servlet项目可以获取request域数据，重定向不可以
+
+四、编码问题
+	常见编码：ISO-8859-1(拉丁编码) GBK(国标码,中文) UTF-8(万国码，世界支持)
+4.1 响应编码
+	- 使用getWriter()默认为iso编码，所以会出现中文乱码
+	* response.setCharaceterEncoding("utr-8")
+	* response.setHeader("Content-type","text/html;charset=utf-8")
+	* response.setContentType("text/html;charset=utf-8")
+	注意：这些需要在getWriter()之前设置
+4.2 请求编码
+　　* 客户端发送给服务器的请求参数是什么编码：
+　　　　客户端首先要打开一个页面，然后在页面中提交表单或点击超链接！在请求这个页面时，
+		服务器响应的编码是什么，那么客户端发送请求时的编码就是什么。
+　　* 服务器端默认使用什么编码来解码参数：
+　　　　服务器端默认使用ISO-8859-1来解码！所以这一定会出现乱码的！因为iso不支持中文！
+　　* 请求编码处理分为两种：GET和POST：GET请求参数不在请求体中，而POST请求参数在请求体中，所以它们的处理方式是不同的！
+　　* GET请求编码处理：
+　　　　> String username = new String(request.getParameter("name").getBytes("iso-8859-1"), "utf-8");
+　　　　> 在server.xml中配置URIEncoding=utf-8
+　　* POST请求编码处理： 
+　　　　> 在获取参数之前调用request.setCharacterEncoding("utf-8");
+4.3 URL编码
+　　表单的类型：Content-Type: application/x-www-form-urlencoded，就是把中文转换成%后面跟随两位的16进制。
+　　为什么要用它：在客户端和服务器之间传递中文时需要把它转换成网络适合的方式。
+　　* 它不是字符编码！
+　　* 它是用来在客户端与服务器之间传递参数用的一种方式！
+　　* URL编码需要先指定一种字符编码，把字符串解码后，得到byte[]，
+	  然后把小于0的字节+256，再转换成16进制。前面再添加一个%。
+　　* POST请求默认就使用URL编码！tomcat会自动使用URL解码！
+　　* URL编码：String username = URLEncoder.encode(username, "utf-8");
+　　* URL解码：String username = URLDecoder.decode(username, "utf-8");
+　　最后我们需要把链接中的中文参数，使用url来编码

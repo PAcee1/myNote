@@ -1,0 +1,59 @@
+UDP协议发送和接收数据
+	发送： 注意需要抛出IOException异常
+		1.创建UDP发送端的Socket对象
+			public DatagramSocket();
+		2.创建数据并把数据打包
+			public DatagramPacket(byte[] buf,int length,
+								  InetAddress address,int port);
+		3.发送数据
+			public void send(DatagramPacket p);
+		4.释放资源
+			public void close();
+		5.代码：		
+		public class SendUDPDemo {
+			public static void main(String[] args) throws IOException {
+				//创建Socket
+				DatagramSocket ds = new DatagramSocket();				
+				//打包：数据，数据长度，IP，端口号
+				byte[] b = "hello UDP".getBytes();
+				InetAddress ip = InetAddress.getByName("localhost");
+				DatagramPacket dp = new DatagramPacket(b, b.length, ip, 10086);				
+				//发送数据包
+				System.out.println("发送端发送数据");
+				ds.send(dp);
+				//释放资源
+				ds.close();
+			}
+		}		
+			
+	接收： 注意需要抛出IOException异常
+		1.创建UDP接收端的Socket对象
+			public DatagramSocket();
+		2.创建数据包用于接收数据
+			byte[] b = new byte[1024];
+			public DatagramPacket(byte[] buf,int length);
+		3.接收数据
+			public void receive(DatagramPacket p);
+		4.解析数据包
+		5.释放资源
+		6.代码
+		public class ReciveUDPDemo {
+			public static void main(String[] args) throws IOException {
+				//创建Socket对象
+				DatagramSocket ds = new DatagramSocket(10086);
+				//创建数据包
+				byte[] b = new byte[1024];
+				DatagramPacket dp = new DatagramPacket(b, b.length);	
+				//接收数据包
+				System.out.println("接收端等待接收数据");
+				ds.receive(dp);  	//阻塞式	
+				//解析数据包
+				String s = new String(dp.getData(),0,dp.getLength());
+				System.out.println(s+" form:"+dp.getAddress().getHostAddress()
+									+" Port:"+dp.getPort());
+				//释放资源
+				ds.close();
+			}
+		}
+	
+	注意：多次启动接收端，会产生BindException异常。端口被占用。

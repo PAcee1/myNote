@@ -1,0 +1,187 @@
+1.HTML是什么：超文本标记语言
+	
+	* 规范：
+		1.一个html开始标签与结束标签<html> </html>
+		2.html包含两部分
+			<head>设置相关信息</head>
+			<body>现在在网页上的信息全写在这里面</body>
+		3.html的标签有头有尾
+		4.html标签不区分大小写
+		5.有的html标签可以没有头
+			- <br/> 换行符	- <hr/> 横线符
+
+	* html思想
+		网页中有很多的数据，但不是每个数据都长一样，所以我们应对不同的样式的数据放在不同的标
+	签中，并对标签进行修改属性值达到不同的效果。
+		这就相当于把标签当做容器，里面放在数据，我们只需要对容器属性值进行更改，便可以实现数
+	据的不同样式实现。
+
+2.标签
+	* 1.文字标签：<font> </font>
+		- 属性：size：文字大小 范围 1-7
+	  			color：文字颜色 可以使用英文表示：red blue green
+		  				可以使用16进制数表示： #ffffff
+				face：字体
+			
+	* 2.注释标签：<!-- -->
+	* 3.标题标签
+		- <h1></h1>  <h2></h2>  <h3></h3> .......<h6></h6>
+		- 从h1到h6，大小是依次变小，同时会自动换行
+
+	* 4.水平线标签
+		- <hr/>
+		- 属性 size: 水平线的粗细 取值范围 1-7
+		       color: 颜色
+		- 代码 <hr size="5" color="blue"/>
+
+	* 5.特殊标签
+		- 想要在页面上显示这样的内容   <html>:是网页 的开始&！
+		- 需要对特殊字符进行转义
+			** <    &lt;
+			** >    &gt;
+			** 空格：&nbsp;
+			** &  : &amp;
+
+	* 6.列表标签
+		- <dl> </dl>: 表示列表的范围
+			** 在dl里面  <dt></dt>: 上层内容
+			** 在dl里面  <dd></dd>：下层内容
+
+		- <ol></ol> : 有序列表的范围
+			- 属性 type：设置排序方式 1(默认)、a、i
+			** 在ol标签里面 <li>具体内容</li>
+
+		- <ul></ul> : 表示无序列表的范围
+			属性： type: 空心圆circle 、实心圆disc 、实心方块square ，默认disc
+			在ul里面  <li></li>
+
+	* 7.图片标签
+		** <img src="图片的路径"/>
+			- src: 图片的路径
+			- width：图片的宽度
+			- height：图片的高度
+			- alt: 图片上显示的文字，把鼠标移动到图片上，停留片刻显示内容
+			  ** 有些浏览器下不显示（没有效果）
+
+		** 绝对路径 - 这个文件所在的路径
+			例：本目录下有一个a1.jpg文件，绝对路径为：D:\JAVA视频\JavaWeb崔希凡\笔记\a1.jpg
+		** 相对路径 - 一个文件相对于这个文件的路径
+			例：本目录下有一个a1.jpg文件，所以直接写a1.jpg就可以，即相对本文件的路径
+
+	* 8.超链接标签（*****）
+		** 链接资源
+			- <a href="资源路径名"> 显示在网页上的内容 </a>
+				** <href>:链接资源地址
+				** <target>:设置打开的方式
+					-- _black:在新建窗口打开
+					-- _self:在当前页打开，默认
+			- 当超链接不需要到任何的地址 在href里面加#
+		** 定位资源
+			- <a href="#name"> 文字 </a>
+			*** 这个name指的是标签的name
+			  例：<a name="top"> 顶部 </a>
+			      <a href="#top"> 回到顶部 </a>
+			*** 原样输出标签:<pre></pre>
+
+	* 9.表格标签（******重要******）
+		** 画图分析表格
+		- 首先定义一个表格的范围<table>
+			- 定义一行使用<tr>
+				- 定义一个单元格<td>
+				- <th>：也是一个单元格 但是它会自动居中并加粗
+		  例：3行2列即：1个table，3个tr，每个tr里2个td
+
+		** <table></table>: 表示表格的范围
+		- <border>：表格线
+		- <bordercolor>：表格线的颜色
+		- <cellspacing>：单元格直接的距离
+		- <width>：表格的宽度
+		- <height>：表格的高度
+		- 设置对齐方式 <align>： left  center  right
+			*** tr：整行对其方式
+			*** td：单个单元格对齐方式
+
+		** 表格的标题<caption>标题名</caption>
+		** 合并单元格 
+		- rowspan：跨行
+			** <td rowspan="3">人员信息</td>
+		- colspan：跨列
+			** <td colspan="3">人员信息</td>
+
+	* 10.表单标签
+		** <form></form>: 定义一个表单的范围
+		- 属性
+			** <action>： 提交到地址，默认提交到当前的页面
+			** <method>:  表单提交方式 
+				- 常用的有两种  get和post，默认是get请求
+
+			** 面试题目： get和post区别
+				1、get请求地址栏会携带提交的数据，post不会携带（请求体里面。在第七天时候讲http协议时候）
+				2、get请求安全级别较低，post较高
+				3、get请求数据大小的限制，post没有限制
+			
+			** <enctype>：一般请求下不需要这个属性，做文件上传时候需要设置这个属性（第22天时候讲文件上传）
+
+		** 输入项：可以输入内容或者选择内容的部分
+			- 大部分的输入项 使用  <input type="输入项的类型"/>
+			******* 在输入项里面需要有一个name属性
+			*** 普通输入项：<input type="text"/>
+				- placeholder：提示
+				- maxlength:最大输入字符数
+			*** 密码输入项：<input type="password"/>
+			*** 单选输入项：<input type="radio"/>
+				- 在里面需要属性 name
+				- name的属性值必须要相同
+				- 必须有一个value值
+				- 实现默认选中的属性：checked="checked"
+			*** 复选输入项：<input type="checkbox"/>
+				- 在里面需要属性 name
+				- name的属性值必须要相同
+				- 必须有一个value值
+				- 实现默认选中的属性： checked="checked"
+			*** 文件输入项：<input type="file"/>
+			*** 下拉输入项（不是在input标签里面的）
+				<select name="birth">
+					<option value="1991">1991</option>
+					<option value="1992">1992</option>
+					<option value="1993">1993</option>
+				</select>
+				- 默认选择
+					*** selected="selected"
+			*** 文本域：<textarea cols="10" rows="10"></textarea>
+			*** 隐藏项：<input type="hidden" />
+			*** 提交按钮：<input type="submit"/>
+			*** 使用图片提交：<input type="image" src="图片路径"/>
+			*** 重置按钮：<input type="reset"/>
+			*** 普通按钮：<input type="button" value=""/>(配合js一起使用)
+
+	* 11.其他标签
+		b: 加粗		s：删除线	  
+		u：下划线	i：斜体		（和word中一样）
+		pre：原样输出	
+		sub:下标	sup: 上标
+		p：段落标签 比br标签多一行
+		====明天css时候一直使用
+		div ：自动换行
+		span：在一行显示
+
+	* 12.框架标签
+		* <frameset>
+			- rows:按照行进行划分
+			- cols:按照列进行划分	
+		* <frame>
+			- 具体显示的页面			
+		***  使用框架标签时候，不能写在body里面，使用了框架标签，需要把body去掉
+		* <frameset rows="80,*">                        //把页面划分成上下两部分 
+			 <frame name="top" src="a.html">             //上面页面
+		
+			 <frameset cols="150,*">                     //把下面部分划分成左右两部分
+				<frame name="lower_left" src="b.html">  //左边的页面
+				<frame name="lower_right" src="c.html"> //右边的页面
+			 </frameset> 
+		  </frameset> 
+		* 如果在左边的页面超链接，想让内容显示在右边的页面中
+			- 设置超链接里面属性 target值设置成名称
+			- <a href="01-hello.html" target="right">超链接1</a>
+
+

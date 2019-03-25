@@ -1,0 +1,29 @@
+1.DBCP 数据库连接池
+	在实际开发中，获得连接和释放资源非常消耗系统资源，为了解决这些问题
+我们采用连接池技术，来共享连接Connection，这些消耗资源的操作交给连接池解决
+
+2.概述
+	用池来管理Connection，就像线程池一样，连接池中有多个创建好的Connection
+对象，当你需要使用时，需要向连接池中获取连接，释放资源close时，也不会真正
+的关闭Connection对象，而是把Connection对象归还给连接池。
+	
+3.规范
+	这些连接池在早期都是各个数据库公司开发的，当Sun公司发现好用后，专门做了
+一个公共接口：javax.sql.DataSourse，各个厂商需要让自己的连接池实现这个接口
+这样我们就可以方便的切换不同厂商的连接池，例如DBCP-C3P0
+
+4.常见配置项
+	必须项			driverClassName	数据库驱动名称
+					url				数据库的地址
+					username		用户名
+					password		密码
+	基本项（扩展）	maxActive		最大连接数量
+					minIdle			最小空闲连接
+					maxIdle 		最大空闲连接
+					initialSize		初始化连接
+
+5.基本使用方法
+	1)自己创建一个DBCP工具类
+		把一些配置项配好，提供一个返回DataSource对象的静态方法
+	2)QueryRunner类，用其构造方法接收DataSource对象
+		好处：不用每次调用query(),update()方法再传递Connection对象

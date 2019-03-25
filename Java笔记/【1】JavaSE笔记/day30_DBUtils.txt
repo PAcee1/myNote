@@ -1,0 +1,55 @@
+DBUtils
+	java编程中数据库操作的实用工具，JDBC的简化开发工具包
+	三大核心类
+		QueryRunner 提供对sql语句操作的API
+		ResultSetHandler 接口，用于定义select操作后封装结果集
+		DbUtils 提供释放资源与事务处理的方法
+			主要使用方法：closeQuietly(Connection conn)
+		我使用的数据库表
+QueryRunner
+	update(Connection conn,String sql,Object... params)
+		使用update()方法进行对数据库的增删改,返回int类型数据
+		这个int类型数据其实就是你执行成功了多少行sql语句
+		参数：
+			conn,数据库连接对象
+			sql,数据库增删改语句
+			Object... params,可变参数,用来对?占位符需要的参数传递
+
+			
+		
+	query(Connection conn, String sql, ResultSetHandler<T> rsh
+			, Object... params)
+		使用query方法进行数据库查找，返回T泛型数据
+		这个T泛型数据其实就是保存数据的结果集类型
+		参数：
+			conn,数据库连接对象
+			sql,数据库增删改语句
+			rsh,结果集类型
+			Object... params,可变参数,用来对?占位符需要的参数传递
+			
+ResultSetHandler
+	接口，用于定义select操作后封装结果集，常用有八大实现类
+	ArrayHandler:用数组接收查询的第一行结果
+		Object[] result = qr.query(conn, sql, new ArrayHandler(),params);
+	
+	ArrayListHandler:用List集合接收多个查询后每行结果的数组对象
+		List<Object[]> result = qr.query(conn, sql, new ArrayListHandler(), params);
+	
+	BeanHandler:用一个Bean类接收查询的第一行结果(Bean为自己创建的一个类)
+		Sort result = qr.query(conn, sql,new BeanHandler<Sort>(Sort.class),params);
+	
+	BeanListHandler:用List集合接收多个查询后每行结果的Bean类对象
+		List<Sort> result = qr.query(conn, sql, new BeanListHandler<Sort>(Sort.class), params);
+	
+	ColumnListHandler:用List集合接收查询的列信息
+		List<Object> result = qr.query(conn, sql, new ColumnListHandler<>("sname"), params);
+	
+	ScalarHandler:用普通基本类型或引用类型变量接收一个查询结果
+		long result = qr.query(conn, sql, new ScalarHandler<>(), params);
+	
+	MapHandler:用Map集合接收查询的第一行结果，键为列名，值为第一行对应数据
+		Map<String, Object> result = qr.query(conn, sql, new MapHandler(), params);
+	
+	MapListHandler:用List集合接收多个查询后每行结果的Map对象
+		List<Map<String,Object>> result = qr.query(conn, sql, new MapListHandler(), params);
+	

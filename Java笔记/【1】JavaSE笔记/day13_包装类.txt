@@ -1,0 +1,94 @@
+1.基本类型	引用类型
+	byte    	Byte
+	int			Integer
+	long		Long
+	char		Character
+	boolean		Boolean
+	double		Double
+	float		Float
+
+2.Integer
+	构造方法：
+		public Integer(int i);
+		public Integer(String s);//s必须由数字组成，例"100".
+		
+	常用基本进制转换：
+		public static String toBinaryString(int i) //2 
+		public static String toHexString(int i)  //16
+		public static String toOctalString(int i) //8
+
+	十进制转到其他进制：常用
+		public static String toString(int i,int radix);//进制范围2-36
+		例：syso(Integer.toString(100,36));
+	其他进制转到十进制：
+		public static int parseInt(Sting s,int radix);
+		例：syso(Integer.parseInt("100",36));
+	
+3.int和String类型相互转换
+	int --> String
+	int num=100;
+	方式1：
+		String s1=""+num;	
+	方式2(主要使用)：	
+		String s2=String.valueOf(num);
+	方式3：
+		Integer i=new Integer(num);
+		String s3=i.toString();		
+	方式4：
+		String s4=Integer.toString(num);
+		
+	String --> int	
+	String s="100";
+	方式1：String--Integer--int
+		Integer i=new Integer(s);
+		int x=i.intValue();	
+	方式2：
+		int y=Integer.parseInt(s);
+		
+4.面试题：
+	/*
+	* 看程序写结果
+	* 
+	* 注意：Integer的数据直接赋值，如果在-128到127之间，会直接从缓冲池里获取数据
+	*/
+	public class IntegerDemo {
+		public static void main(String[] args) {
+			Integer i1 = new Integer(127);
+			Integer i2 = new Integer(127);
+			System.out.println(i1 == i2);//false
+			System.out.println(i1.equals(i2));//true
+			System.out.println("-----------");
+	
+			Integer i3 = new Integer(128);
+			Integer i4 = new Integer(128);
+			System.out.println(i3 == i4);//false
+			System.out.println(i3.equals(i4));//true
+			System.out.println("-----------");
+	
+			Integer i5 = 128;
+			Integer i6 = 128;
+			System.out.println(i5 == i6);//false
+			System.out.println(i5.equals(i6));//true
+			System.out.println("-----------");
+
+			Integer i7 = 127;
+			Integer i8 = 127;
+			System.out.println(i7 == i8);//true
+			System.out.println(i7.equals(i8));//true
+
+			// 通过查看源码，我们就知道了，针对-128到127之间的数据，做了一个数据缓冲池，如果数据是该范围内的，每次并不创建新的空间
+			// Integer ii = Integer.valueOf(127);
+		}
+	}		
+
+Character(了解)
+	(1)Character构造方法	
+		Character ch = new Character('a');
+	(2)要掌握的方法：(自己补齐)
+		A:public static boolean isUpperCase(char ch)//判断给定的字符是否是大写
+		B:public static boolean isLowerCase(char ch)//判断给定的字符是否是小写
+		C:public static boolean isDigitCase(char ch)//判断给定的字符是否是数字字符
+		D:public static boolean toUpperCase(char ch)//把给定的字符转成大写
+		E:public static boolean toUpperCase(char ch)//把给定的字符转成小写
+	(3)案例：
+		统计字符串中大写，小写及数字字符出现的次数

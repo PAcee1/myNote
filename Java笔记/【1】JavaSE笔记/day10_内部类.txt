@@ -1,0 +1,66 @@
+成员内部类
+	普通调用方法：Outer.Inner oi=new Outer().new Inner();
+	静态调用方法：1.Outer.Inner oi=new Outer.Inner();
+			      2.Outer.Inner.show();
+	内部类用private修饰：
+		无法再main函数中调用，怎么办呢？
+		在外部类中创建一个方法，用来判定是否可以调用此内部类。
+		class Outer{
+			private class Inner{
+				public void show(){}
+			}
+			
+			public void use(){
+				if(被允许){
+					Inner in=new Inner();
+					in.show();
+				}
+			}
+		}
+	
+	面试题：填空输出30,20,10
+		class Outer{
+			public int num=10;
+			class Inner{
+				public int num=20;
+				public void show(){
+					syso(???);//num,就近原则
+					syso(???);//this.num 
+					syso(???);//new Outer().num  或 Outer.this.num
+				}
+			}
+		}
+
+局部内部类
+	面试题：
+		局部内部类访问局部变量的注意事项？
+			局部变量必须用final修饰
+			因为，局部变量会随着方法的调用而调用，方法调用完毕，就会消失
+			而局部内部类属于堆内存，不会立即消失，所以要用final修饰，变成
+			常量，就算消失了，在内存中存储的数据还可以使用。
+			
+匿名内部类：
+	格式：new 类名或接口名(){};
+	本质：是一个继承了子类或实现接口的子类匿名对象
+	面试题：
+interface Inter{
+void show();
+}
+class Outer{
+	//此处填空；
+	/*
+		public static Inter method() {
+		return new Inter(){
+			public void show() {
+				System.out.println("HelloWorld");
+			}
+		};
+	}
+	*/
+}
+
+class Test{
+	public static void main(String[] args) {
+		Outer.method().show();
+	}	
+}

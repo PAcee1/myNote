@@ -1,0 +1,65 @@
+Set
+	Collection
+		|--List	有序（存储顺序和取出顺序一致），可重复
+		|--Set	无序（存储顺序的取出顺序不同）,唯一补可重复
+			|--HashSet
+				|--LinkedHashSet
+					由链表和哈希表组成，有序，唯一
+			|--TreeSet
+			
+	HashSet
+		A:底层是哈希表，一个元素为链表的数组
+		B:HashSet底层依赖hashCode(),equals()方法
+			执行顺序
+				先判断hashCode()哈希值是否相等
+				相等
+					调用equals方法，判断内容是否相等
+					相等返回false，不存储
+					不相同返回true，存储
+				不相等
+					直接存储入数组
+		
+		C:在特点使用时，例存储对象
+			应先重写hashCode()与equals()方法
+			(1)重写hashCode()方法
+				public int hasaCode(){
+					//把哈希值设为0，所有的都相同，就都要调用equals方法比较，
+					//return 0;	
+					//但效率太低
+					
+					//哈希值与成员变量有关，所以增加所有的成员变量即可
+					//一般情况下，基本类型直接相加，引用类型加其哈希值
+					//return this.name.hasaCode()+this.age;
+					//但是有特殊情况，比如：
+					//Student s1.name.hashCode()=30,age=40; 相加为70
+					//Student s2.name.hashCode()=50,age=20;	相加为70
+					//可以看出来两个成员内容并不相同但哈希值相同，为了避免这种情况，常常乘以一个常量
+					
+					return (this.name.hashCode()+this.age)*31;
+				}
+			
+			(2)重写equals()方法：
+					if(this == obj) //判断是否相等
+						return false;
+					if(!(obj instanceOf Student)) //判断obj是否为Student类型
+						return false;
+						
+					Student s=(Student)obj;
+					return this.name.equals(s.name) && this.age==s.age;
+					
+	TreeSet
+		底层数据结构是二叉树（红黑树）
+		
+		特点是：有序，唯一
+		有序：
+			自然排序(无参构造，元素具备比较器)
+				元素所属的类实现Comparable接口并重写compareTo()方法	
+			比较器排序(带参构造，集合具备比较器)
+				a:写一个子类对象实现Comparator接口，重写compare()方法；
+				  TreeSet ts =new TreeSet(new NewComparator());
+				b:使用匿名内部类（只需要比较一次时常用）
+				  TreeSet ts =new TreeSet(new Comparator(){
+					public int compare(Object o1,Object o2){
+						...
+					}
+				  });

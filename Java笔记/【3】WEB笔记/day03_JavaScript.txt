@@ -1,0 +1,68 @@
+一、JavaScript
+	js是基于对象和事件驱动的语言，应用于客户端，是一种脚本语言
+		基于对象：提供了很多对象，只需拿过来使用即可
+		事件驱动：html是静态页面，js是动态页面效果
+		
+	1.js的特点
+		* 安全性：不可以直接访问本地磁盘
+		* 交互性：信息的动态交互
+		* 跨平台：因为基于浏览器，所以有浏览器即可使用
+				  类似Java基于虚拟机。			  
+	2.js与java区别
+		公司：js是网景公司的，java前身Sun公司现在被Oracle公司收购
+		对象:js基于对象，java面向对象
+		语言：js是弱语言，java强语言，变量全部使用var定义
+		执行：js只需解析就可执行，java需先编译通过才能执行。		
+	3.js的组成
+		ECMAScript：js的核心，(语法语句函数等)
+		DOM：文档对象模型，(整个html页面的内容)
+		BOM：浏览器对象模型，(整个浏览器相关内容)	
+	4.js引入方式
+		外部引入
+			外部写好1.js代码
+			html中<script src="1.js" type="text/javascript"></script>实现调用
+		内部引入
+			直接在html中书写<script></script>			
+	5.ECMAScript语法：
+		区分大小写
+		变量是弱类型的	变量全部由var定义，如果没赋值则不属于任何类型。
+		每行分号可有可无	
+	6.变量类型
+		undefined：变量被声明但是没有赋值
+		boolean
+		number
+		string
+		object：引用类型或null类型 访问的对象不存在-null
+		通过typeof运算符，查看变量类型   typeof(变量名称)
+		所有引用类型都是object
+		通过instanceof 运算符解决typeof对象类型判断问题
+	7.运算符要点
+		Javascript中小数和整数都是数字类型，所以除法中没有整数，会出现小数。
+		字符串与数字相加，是字符串链接，如果相减，字符串直接转换成数字再相减。
+		Boolean类型可以进行运算，false就是0或者null，非0非空是true，默认用1显示。
+	8.js的函数的重载
+		 js里面是否存在重载？(面试题目)
+		（1）js里面不存在重载。
+		（2）但是可以通过其他方式模拟重载的效果 （通过aruguments数组来实现）
+	
+二、第一天总结
+	事件：
+	onsubmit()此事件写在form标签中，必须有返回值。
+	onload()此事件只能写一次并且放到body标签中
+	其它事件放到需要操作的元素位置。
+	(onclick点击、onfocus聚焦光标放在元素上、onblur离焦光标离开元素)
+
+	获取元素：
+		document.getElementById("id")
+	获取元素里面的值:
+		document.getElementById("id").value
+		
+	向页面输出
+		弹窗：alert();……
+		向浏览器中写入内容：document.write(内容)；
+		向页面指定位置写入内容,innerHTML  	 
+		
+		
+		
+		
+		

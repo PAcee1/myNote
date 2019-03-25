@@ -1,0 +1,106 @@
+1.Throwable
+	|-Error
+		重大异常错误，一般为java运行是系统内部出现的内部错误和资源耗尽错误
+	|-Exception
+		|-RunTimeException
+			运行异常，一般由代码本身出现问题，可以处理也可以不处理
+			如果这种异常没有处理，JVM会做出默认处理：把异常名称，原因，出现的问题等信息
+													 打印出来，并中断程序
+		|-IOException
+			编译错误，必须处理
+	注意：1.Error和RunTimeException一般不处理这两种异常，属于非受查异常
+		  2.IOException是必须处理的异常，属于受查异常，如果不处理就无法运行
+																 
+2.如何处理异常
+	A:捕获异常
+	  捕获一种异常：
+		try{
+			code
+			more code
+			//可能出现问题的代码
+		}catch(ExceptionType e){
+			handler for this type
+			//对问题的处理
+		}
+		
+	  捕获两种或以上异常：
+		a) 写多个try...catch语句
+		 try{
+		 	code
+		 }catch(ExceptionType e){
+			handler for this type
+		 }
+		 try{
+			code
+		 }catch(ExceptionType e){
+			handler for this type
+		 }
+		 
+		b) 一个try多个catch
+		 try{
+		 	code
+		 }catch(ExceptionType e){
+			handler for this type
+		 }catch(ExceptionType e){
+			handler for this type
+		 }
+		 注意：尽量明确异常，不要一直使用Exception这个父类
+			   平级关系前后顺序不重要，但父子关系，父亲一定放在子类后面
+			   
+	  JDK7出现新的异常处理方案：
+		try{ ...
+		}catch(异常名1 |异常名2 |... 变量){
+		}
+		注意：这个方法虽然简洁，但是不够好
+			  因为处理方式唯一，且多个异常间必须是同级关系。
+	
+	B:抛出异常  (throws,throw两者区别，面试题)
+		throws 异常类名
+		用在方法名后，跟的是异常类名
+		可以抛出多个异常类名，用逗号隔开
+		表示抛出异常，由调用者进行处理
+		throws表示出现异常的一种可能性，并不一定会发生这些异常
+		注意：抛出异常必须跟在方法的括号后面
+			  尽量不要在main方法上抛出异常，编译时期异常抛出，调用者必须处理。
+		
+		throw 异常对象名
+		用在方法体内，跟的是异常对象名，
+		只能抛出一个异常对象名，
+		表示抛出异常，由方法体内语句进行处理
+		throw是抛出异常，执行throw则一定抛出了某种异常
+	
+	C:自定义异常
+		继承自Exception或者RuntimeException,只需要提供无参构造和一个带参构造即可
+		
+3.Throwable中的一些成员方法
+	getMessage() 获取异常信息，返回字符串            -不常用
+	toString()	获取异常类名和异常信息，返回字符串   -不常用
+	printStackTrace() 获取异常类名和异常信息，即异常位置，返回void  -常用
+					  和默认处理相同，但是不会中断程序，即异常后面的程序会继续运行
+					  
+4.finally关键字及其面试题
+		A:finally用于释放资源，它的代码永远会执行。特殊情况：在执行到finally之前jvm退出了
+		  注意：1.finally语句中如果有return,且try中也有，那么finally中返回值会覆盖try中返回值。
+				2.finally语句不要放入可能会抛出异常的代码，这样会非常麻烦。
+		B:作用
+			释放资源，例如IO和数据库
+		C:面试题
+			a:final,finally,finalize的区别?
+				final:修饰类(不能被继承)，方法(不能被重写)，变量(变成常量)
+				fianlly:异常处理的一部分，用于释放资源，一般finally中代码一定会执行
+				finalize:是Object类的一个方法，用于垃圾回收
+			b:如果在catch里面有return,请问finally还执行吗?如果执行,在return前还是后
+				会，前。
+				
+				实际上在中间。这个上课我们讲过
+		D:异常处理的变形
+			try...catch...finally
+			try...catch...
+			try...catch...catch...
+			try...catch...catch...fianlly
+			try...finally	
+
+5.异常的注意实现
+		A:父的方法有异常抛出,子的重写方法在抛出异常的时候必须要小于等于父的异常 
+		B:父的方法抛出多个异常,子的重写方法必须比父少或者小			
+		C:父的方法没有异常抛出,子的重写方法不能有异常抛出，子类异常只能用try

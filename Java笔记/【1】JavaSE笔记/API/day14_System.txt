@@ -1,0 +1,23 @@
+System(掌握)
+	(1)系统类,提供了一些有用的字段和方法
+	(2)成员方法(自己补齐)
+		A:运行垃圾回收器
+			public static void gc();
+			注意:当执行System.gc()前系统会先调用自己的finalize方法，然后才会super父类的
+				 finalize方法，即先释放自己的资源，再释放父类的。在垃圾回收时，不要频繁
+				 调用，因为这会使jvm浪费更多的系统资源，要执行大量对象释放时才调用。
+				 
+		B:退出jvm
+			public static void exit(int status);//终止当前正在运行的JVM虚拟机
+			
+		C:获取当前时间的毫秒值
+			public static long currentTimeMillis();//返回毫秒为单位的时间
+			主要用来测试软件运行时间。
+			long start=System.currentTimeMillis();
+			····
+			long end=System.currentTimeMillis();
+			syso(end-start);
+			
+		D:数组复制
+			public static void arraycopy(Object src,int srcPos,Object dest,int destPos,int length);
+			//从目标数组srcPos位置开始，复制到dest数组destPos位置，复制length个

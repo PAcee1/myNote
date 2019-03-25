@@ -1,0 +1,124 @@
+Cookie
+1.Http协议与Cookie
+	* Cookie是Http协议定制的，由服务器保存cookie到浏览器，下次浏览器请求时带上cookie，服务器就可以
+知道请求的用户是谁了。
+	* 保存方式为键值对，服务器将这个键值对发送给浏览器，浏览器负责保存，Set-Cookie:xx=xxx
+	* 响应头为一键多值，Set-Cookie:aa=A,Set-Cookie:bb=B
+	* 浏览器请时将Cookie放在请求头，Cookie:aa=A;bb=B
+	* http协议规定
+		1)1个Cookie只能有4kb
+		2)一个服务器最多向浏览器保存20个Cookie
+		3)一个浏览器最多保存300个Cookie
+		4)浏览器竞争已经不遵守这个规定了，超出规定
+2.Cookie用途
+	用来跟踪客户端状态，会话跟踪技术，(一个用户多个请求)
+	保存登录名等待
+	** 会话：用户打开浏览器，点击多个超链接访问服务器的多个Web资源，关闭浏览器，过程叫做会话
+	** 有状态会话：服务器知道打开浏览器的用户是谁
+---------- Cookie不能跨浏览器 ------------
+3.JavaWeb设置使用Cookie
+	* 原始方式(了解)
+		- response.addHeader("Set-Cookie", "aaa=AAA")
+		- request.getHeaderValues("Cookie")
+	* 便捷方式(掌握)
+		- response.addCookie(Cookie cookie)
+		- request.getCookies()
+	* 实例：a.jsp发送cookie，b.jsp获取cookie
+4.Cookie的生命
+	Cookie类的maxAge：cookie的最大生命，即cookie的保存时间，以秒为单位
+	maxAge>0:浏览器会把cookie保存到硬盘上，有效时间为x秒
+	maxAge<0:cookie在浏览器内存中保存，浏览器关闭cookie消失
+	maxAge=0:删除cookie，不管cookie在内存还是硬盘。
+5.Cookie的路径
+	* cookie路径不是指cookie在浏览器保存的路径
+	* cookie的路径由服务器创建cookie时设置
+	* cookie默认路径为当前访问路径的父路径，例如/WEB11/cookie1/a.jsp,path=/WEB11/cookie1
+	* 浏览器访问服务器路径包含某个cookie路径时会归还这个cookie，如果不包含就不归还
+	例：ck1.path=/WEB11/cookie1
+		- 浏览器访问http://loaclhost:8080/WEB11/cookie1/b.jsp 会归还ck1
+		- 浏览器访问http://loaclhost:8080/WEB11/index.jsp 不会归还ck1
+6.Cookie的domian
+	* domain用来指定Cookie的域名！当多个二级域中共享Cookie时才有用。
+    * 例如；www.baidu.com、zhidao.baidu.com、tieba.baidu.com之间共享Cookie时可以使用domain
+    * 设置domain为：cookie.setDomain(".baidu.com");
+    * 设置path为：cookie.setPath("/");
+7.案例：使用cookie获取用户上一次访问时间
+
+======================================
+HttpSession
+1.概述
+	* httpsession是由javaweb提供的，跟踪会话的类，是服务端对象，保存在服务器端
+	* 是Servlet三大域之一，request，session，ServletContext
+	* 底层依赖Cookie1，或URL重写
+
+2.session的作用
+	* 会话范围：用户打开浏览器开始访问，到关闭浏览器访问结束
+	* 服务器会对每个用户创建一个session对象，保存其登录状态
+		- Servlet： HttpSession session = request.getSession();
+		- JSP: session为内置对象
+	* session域
+		setAttribute(String name,Object value)
+		getAttribute(String name)
+		removeAttribute(String name)
+3.案例
+	* 演示session会话多次请求共享数据
+		- AServlet：保存数据
+		- BServlet：读取session数据
+	* 演示保存用户登录信息（重要）
+		- login.jsp：登录页面
+			提供登录表单，提交表单请求LoginServlet
+		- LoginServlet：校验用户是否登录成功！
+			获取请求参数，校验用户是否登录成功
+			** 失败：保存错误信息到request域，转发到login.jsp(login.jsp显示request域中的错误信息)
+			** 成功：保存用户信息到session域中，重定向到succ1.jsp页面，显示session域中的用户信息
+		- succ1.jsp：只有登录成功才能访问的页面
+			从session域获取用户信息，如果不存在，显示“您还没有登录”。存在则显示用户信息
+		- succ2.jsp：只有登录成功才能访问的页面
+			从session域获取用户信息，如果不存在，显示“您还没有登录”。存在则显示用户信息
+4.httpSession原理
+4.1 session的创建：
+	服务器访问时不会立马创建session，而是只有调用了getSession()这个方法是才会创建
+4.2 getSession()
+	获取Cookie中的JSESSIONID，相当于银行卡号，根据jsessionid查找对应的session
+	- 如果jsessionid不存在，会创建session，保存session，把其jsessionid保存到cookie中
+	- 如果jsessionid存在，但是找不到对应的session，一样会创建保存新session，把jsessionid保存到cookie
+	- 如果jsessionid存在，且找到了对应的session，就不会创建而是返回这个session对象
+	注意：创建新session，浏览器会得到一个包含jsessionid的cookie，这个cookie保存在浏览器内存中，即关闭浏览器消失。
+		  在使用JSP时会有jsessionid，因为jsp会自动创建九大内置对象，就使用了getSession方法
+		  在Servlet类中如果不使用getSession方法，就没有jsessionid
+5.httpsession其他方法
+	* String getID():获取jsessionid
+		jsessionid由UUid这个类创造，为32位16进制数。
+	* int getMaxInactiveInterval()：获取session最大不活动时间(秒)，默认30分钟
+		最大不活动时间：即session在这个时间没有被使用调用，服务器会移除这个session
+	* void invalidate():让session失效，浏览器再次访问时会创建新session
+	* boolean isNew():查看session是否为新的
+	当客户端第一次请求时，服务器创建session，但这时服务器还没有把sessionId响应给客户端时，这时session的状态为新。
+6.配置session最大不活动时间
+	<session-config>
+        <session-timeout>30</session-timeout>
+    </session-config>
+7.URL重写
+	- 当Cookie被禁止时，想要使用session必须实现URL重写
+	- URL重写指让所有超链接或表单添加jsessionid这个特殊的请求参数
+	- 这样服务器可以根据请求参数得到jsessionid从而找到session对象
+	* <a href="/WEB11_Session/AServlet;JSESSIONID=<%=session.getID()%>">
+	* response.encodeURL(String url)
+		-- 对url进行智能重写，如果没有jsessionid这个cookie，在url后会添加jsessionid，否则不添加。
+		-- String url = response.encodeURL("/WEB11_Session/AServlet");
+		-- <a href="<%=url%>">
+
+三、cookie和session区别
+    ·保存位置
+        cookie保存在浏览器，session保存在服务器
+    ·安全性
+        cookie安全性不如session
+    ·对服务器负担
+        随着访问量增多，session因为是保存在服务器，会加重服务器负担，而cookie不会
+    ·保存形式
+        cookie保存的是字符串，session保存的是对象
+    ·保存时间
+        cookie保存时间一般比session久，因为session默认30分钟无使用就销毁
+    ·浏览器支持
+        cookie需要浏览器支持，如果被禁用则不能使用
+        session虽然底层依赖cookie但是也可以使用url重写来实现对session的使用

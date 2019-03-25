@@ -1,0 +1,250 @@
+一、Servlet简介
+1.1 什么是Servlet
+	Servlet是javaweb的三大组件之一(Servlet,Filter,Listener)
+	是一个小服务程序程序，由Java编写的服务端程序，主要功能用于交互式浏览和修改数据，
+实现动态web内容。
+1.2 实现Servlet的3种方式
+	* 实现javax.servlet.Servlet接口
+	* 继承javax.servlet.GenericServlet类
+	* 继承javax.servlet.http.HttpServlet类
+	在开发中我们一般继承HttpServlet类来完成我们所需的功能，但是学习需要知道他的原理，所以
+应该从第一个开始学
+
+二、Servlet接口
+2.1 Servlet接口中的方法
+	Servlet接口中有5个方法需要我们去重写
+	* void init(ServletConfig servletConfig) 
+		- 这个方法在Servlet创建实例后就被服务器立即自动调用，只调用一次。
+		- 可以看成出生之后马上要剪脐带，而一生只有一次
+	* void service(ServletRequest,ServletResponse)
+		- 每次处理请求都会被调用，被调用多次
+		- 正因如此，我们应把处理请求的代码写在这里
+	* void destory()
+		- 用来关闭服务器时释放资源的方法，只调用一次
+		- 可以看做死前立遗嘱的方法
+		- 一般不需要去写他
+	----- 上面三个是生命周期方法 -----
+	* ServletConfig getServletConfig() //获取Servlet配置信息
+	* String getServletInfo() //获取Servlet的信息，没用，一般不写
+
+2.2 Servlet特点
+	所有方法由Tomcat服务器来执行，我们无法调用
+	其Servlet对象的实例由Tomcat服务器来创建，我们无法创建
+	我们的工作只是来写继承或实现了Servlet的子类，完成我们需要的方法
+
+	注意：Servlet是单例模式，一个Servlet类只有一个实例，当然可以存在多个Servlet类
+		  Servlet线程是不安全的，但是效率高
+2.3 Servlet简单学习
+	1)创建一个Web项目
+	2)在src文件夹下创建一个包，包中创建一个AServlet类，类实现Servlet接口
+	3)重写方法，所有方法都是打印其方法名
+	4)在WEB-INF文件夹下的web.xml文件中添加元素
+		<servlet>
+			<servlet-name>xxx</servlet-name> <!-- 这个Servlet名可以随便写 -->
+			<servlet-class>包名.类名</servlet-class> <!-- Servlet类位置 -->
+		</servlet>
+		<servlet-mapping>
+			<servlet-name>xxx</servlet-name> <!-- 这个Servlet名需要和上面相同 -->
+			<url-pattern>/AServlet</url-pattern> <!-- 指在浏览器上访问的url项目名后地址 -->
+		</servlet-mapping>
+		- 这一步的目的是，把访问路径和包名.类名绑定在一起
+	5)开启Tomcat，在浏览器上访问url=http://localhost:8080/Web项目名/AServlet
+		- 因为上一步绑定到了一起，这时访问项目名/Servlet，服务器就知道去项目中的AServlet
+		寻找Servlet来调用
+	6)多次访问查看console中的数据
+
+2.4 Servlet接口方法参数类型介绍
+	* ServletConfig：为Servlet配置对象
+		- 在Servlet中的init(ServletConfig arg0)方法中使用
+		- ServletConfig是接口，实现类都由Tomcat提供
+		- 例：web.xml中
+			<servlet>
+				<servlet-name>xxx</servlet-name> 
+				<servlet-class>cn.zhao.servlet.AServlet</servlet-class>
+				<init-param>
+					<param-name>p1</param-name>
+					<param-value>v1</param-value>
+				</init-param>
+				<init-param>
+					<param-name>p2</param-name>
+					<param-value>v2</param-value>
+				</init-param>
+			</servlet>
+		- 成员方法：
+			* String getServletName(); 
+				-- 获取web.xml里配置的<servlet>中的<servlet-name>
+				-- 即例中返回xxx
+			* String getInitParameter(String name); 
+				-- 获取指定名称的初始化值
+				-- 即例中传递name="p1",返回值为v1
+			* Enumeration getInitParameterNames();
+				-- 获取所有初始化元素的名称
+				-- 即例中返回p2,p1的Enumeration集合
+			-------- 上面三个一般用不到 ----------
+			* ServletContext getServletContext(); //最重要
+				-- 获取Servlet上下文对象
+
+	ServletRequest：service()方法参数，表示请求对象，Tomcat把用户请求的数据封装到里面
+	ServletResponse：service()方法参数，表示响应对象，将用户需要的数据通过ServletResponse
+					 类中方法发送
+
+三、GenericServlet
+	GenericServlet是Servlet的一个抽象子类，唯一抽象方法为serive()方法，是一个通用无关协议的类
+	添加了一个私有成员变量config
+		1)用来保存init(ServletConfig scon)中tomcat为其创建的config对象
+		2)用来当做getServletConfig()的返回值
+	void destory()；为空实现，我们继承该类时，需要就重写不需要就不写
+
+	在GenericServlet中还实现了ServletConfig接口的方法
+		* ServletContext getServletContext()
+		* String getInitParameter()
+		* Enumeration getInitParameterNmaes()
+		* String getServletName()
+
+	相比父接口Servlet多了一个成员方法 init()
+		* 该方法会被init(ServletConfig serConfig)调用
+		* 目的是在对Servlet初始化时减少代码的编写
+			- 如果没有这个方法，在初始化时第一句要加上super.init(config);因为父类
+			init(ServletConfig)方法保存了tomcat创建的config对象，如果不加这句直接
+			重写就没有这个config对象了，所以父类GenericServlet很多方法都会报异常
+			- 或者初始化时直接重写了父类的init(ServletConfig scon)方法
+		* 有了这个方法我们在想要初始化的时候只需要编写init()里的代码即可
+	
+四、HttpServlet
+4.1 HttpServlet特有方法
+	HttpServlet继承了GenericServlet，相比较父类多了http协议请求支持，是没有抽象方法的抽象类
+	HttpServlet类方法：
+	* 实现了父类public void service(ServletRequest,ServletResponse)方法
+		- 把ServletRequest强转成HttpServletRequest形式
+		- 把ServletResponse强转成HTTPServletResponse形式
+		- 调用本类添加的service(HttpServletRequest,HttpServletResponse)方法
+	* 添加了protect void service(HttpServletRequest,HttpServletResponse)方法
+		注意：这个方法不是生命周期方法，也不需要我们去重写里面的方法
+		- 调用request的getMethod()获取请求方式
+		- 如果是GET请求，那么调用本类的doGet(HttpServletRequest,HttpServletResponse)方法
+		- 如果是POST请求，那么调用本类的doPost(HttpServletRequest,HttpServletResponse)方法
+	* 添加了doGet(HttpServletRequest,HttpServletResponse)方法
+	* 添加了doPost(HttpServletRequest,HttpServletResponse)方法
+	* 添加了doXxx(HttpServletRequest,HttpServletResponse)方法
+	注意：在HTTPServlet里，doXxx方法需要被重写，如果doGet或doPost没有被重写但浏览器使用某种
+	方式请求了，会出现405错误。
+4.2 HttpServlet运行流程
+	1)浏览器发出http请求
+	2)Tomcat会调用Servlet生命周期方法service()
+	3)service()方法内强转参数，调用http的service()方法
+	4)http的service()方法内获取请求方法
+	5)根据请求方法判断http的请求是GET还是POST
+	6)根据判断调用doGet()或doPost()
+
+五、Servlet细节
+5.1 Servlet与线程安全
+	一个Servlet只有一个对象，为单例模式，这样就会出现一个Servlet处理多个请求的情况，Servlet
+线程是不安全的，但是其速度快效率高，如何避免线程安全问题？
+	* 不创建成员变量，创建成员变量有可能会读写操作冲突 (菜鸟)
+	* 创建无状态的成员，即不能存储数据，没有实例对象，为不变量(高手)
+	* 可以创建有状态成员，但是只能进行可读操作，不能有写操作 (大神)
+
+5.2 在服务器启动时就创建Servlet
+	一般情况下，Servlet对象只有在浏览器第一次访问这个Servlet类是才由Tomcat创建
+	但也可以在web.xml中进行配置，使服务器一启动就创建Servlet
+	在<servlet>下添加<load-on-start>0</load-on-start> //参数为非负整数
+5.3 <url-pattern>
+	1)可以在<servlet-mapping>中配置多个<url-pattern>
+		<servlet-mapping>
+			<servlet-name>AServlet</servlet-name>
+			<url-pattern>/AServlet</url-pattern>
+			<url-pattern>/BServlet</url-pattern>
+		</servlet-mapping>  
+	  这样AServlet和BServlet都可以访问AServlet
+	  这个方法是在JavaWeb三大组件没形成之前为过滤器使用的，现在没有使用的必要
+	2)在<url-pattern>中使用通配符
+		* <url-pattern>/servlet/*</url-pattern> 
+			- <!-- /servlet/a,/servlet/b -->都可以访问
+			- 为路径匹配
+		* <url-pattern>*.do</url-pattern>
+			- <!-- /a.do,/b.do -->都可以访问
+			- 为扩展名匹配
+		* <url-pattern>/*</url-pattern>
+			- 匹配所有url，嘛都匹配
+		注意：通配符不能放在url中间，例/*.do是错误的
+			  不能有多个通配符，只能出现一次
+			  通配符的优先级是：谁越精确就用谁的
+				例：/servlet/a 这个路径/servlet/*和/*都可以，但是更精确第一个，即优先级高
+5.4 web.xml(了解)
+	${CATALINA_HOME}\conf\web.xml是所有项目web.xml的父文件，相当于写到了所有xml中
+	* 里面有一个name为default的Servlet元素，当所有Servlet名都不匹配时，会调用他即页面显示404
+	* 所有写的jsp代码都会由JspServlet来解析再显示到浏览器中
+	* session默认超时时间为30分钟
+
+5.5 Servlet和反射
+	1)在浏览器中，我们url地址后面跟的是在web.xml里servlet配置的url-pattern
+	2)根据这个找到Servlet-name
+	3)根据servlet-name找到class路径
+	4)得到了class文件的名称就可以用反射技术获取类对象，方法
+	5)forName("class")可以获得Class对象
+	6)getMethod("name")可以获得例如service()方法
+	7)invokie()可以完成调用
+	8)这些都是有Tomcat完成的
+
+六、ServletContext
+6.1 ServletContext概述
+	ServletContext一个项目中只有一个，作用是在整个web项目中动态资源共享。
+	多个Servlet获取这唯一的对象，他就好比快递员，把数据从一个Servlet传送到另一个Servlet。
+	ServletContext在服务器启动时诞生，在服务器关闭是死亡，可以说是与天地同寿！
+
+6.2 ServletContext获取方式
+	* ServletConfig - getServletContext()
+	* GenericServlet - getServletContext()
+	* HttpSession - getServletContext()		--不急
+	* ServletContextEvent - getServletContext()		--不急
+
+6.3 ServletContext域对象功能
+	域对象：指这个对象可以实现存数据功能，取数据功能，域对象内部其实有一个map
+	ServletContext是JavaWeb四大域对象之一：
+		PageContext
+		ServletRequest
+		HttpSession
+		ServletContext
+	成员方法：
+	* void setAttribute(String name,Object value)
+	* Object getAttribute(String name)
+	* void removeAttribute(String name);//键值对一起删除
+	* Enumeration getAttributeNames();//获取所有域属性名称
+
+6.4 获取应用初始化参数
+	看到初始化参数，可以想到在Servlet中也有这个名词，在xml中servlet下设置<init-parma>,但是
+这个参数是局部的，只能在单个servlet中使用。
+	使用ServletContext可以使用公共的初始化参数
+	<web-app ...>
+		...
+		<context-param>
+			<param-name>paramName1</param-name>
+			<param-value>paramValue1</param-value>  	
+		</context-param>
+	</web-app>
+	其ServletContext使用方法和ServletConfig大致相同
+	* ServletContext getServletContext()
+	* String getInitParameter()
+	* Enumeration getInitParameterNmaes()
+	* String getServletName()
+
+6.5 获取资源的相关方法
+	* 获取真实路径
+		getRealPath("/文件名")
+	* 获取资源流
+		- 相当于把上一个真实路径传递到InputStream中
+		- InputStream is = servletContext.getResourceAsStream("/a.txt");
+	* 获取指定目录下所有资源路径
+		servletContext.getResourcePaths();
+6.6 浏览器访问量练习
+6.7 获取类路径下资源
+	类路径对一个JavaWeb项目而言，就是/WEB-INF/classes和/WEB-INF/lib/每个jar包。
+	两种方法
+		* Class
+		* ClassLoader
+	Class类的getResourceAsStream(String path)：
+		路径以“/”开头，相对classes路径
+		路径不以“/”开头，相对当前class文件所有路径
+			例如在cn.itcast.servlet.MyServlet中执行，那么相对/classes/cn/itcast/servlet/路径。
+	ClassLoader类的getResourceAsStream(String path)：
+		相对classes路径.

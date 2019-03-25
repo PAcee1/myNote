@@ -1,0 +1,32 @@
+一、BaseServlet
+	在一个项目中，会有很多功能，例如增加账户，删除账户，如果每个功能写一个Servlet，Servlet会“膨胀”，
+为了避免这种事情发生，自己写一个BaseServlet抽象类继承HttpServlet，在客户端发出请求时多给出参数，这样
+BaseServlet可以根据这个参数来调用相应的方法。
+	* BaseServlet需要重写service方法，本身是根据请求调用doGet或doPost，我们通过反射，根据用户method参数
+的值来调用不同的方法，http://lcoalhost:8080/xxx/AServlet?m=addUser 例如这个就调用的addUser方法。
+	* 在平常Servlet编写中，会有大量的转发或重定向，在BaseServlet中每个方法也可以加入类似"r:/index.jsp"
+来重定向到index.jsp，只需在BaseServlet中使用字符串操作来实现。
+	查看WEB19_BaceServlet中BaseServlet.java源码
+
+二、JDBCUtils的第三次修改
+问题1：
+	处理事务需要用到Connection，为sql包下，sql包下的所有东西都应该放在dao层实现，但是dao不是处理事务的
+地方，而是对数据库的操作，那么处理事务应该在Service层，即业务逻辑层，又违反了规定，这时我们应该
+写一个工具，把Connection封装起来。
+	需要注意的问题：
+		* Connection一次事务中需要用同一个Connection
+			在JDBCUtils中创建一个成员变量为专供事务使用的Connection con，在getConnection方法中加入判断
+		如果con为空，从线程池取出一个新线程，如果不为空，则返回con，这样可以保证开启事务时创建新con，
+		接下来的操作都使用的同一个con
+		* commit或rollback后需要设置con=null
+		* 在调用事务相关的方法时先做判断，begin，判断是否不为空，不为空说明事务已经开启，不需要在开启
+										  commit，判断是否为空，为空说明事务还未开启，不能提交
+										  rollback，判断是否为空，为空说明事务还未开启，不能回滚
+问题2：
+	Connection的资源释放问题，如果在调用完方法后释放资源，这样事务中第二次调用就会抛出异常，怎么让释放
+资源变得可靠，就可以写一个close装饰方法，判断是不是事务中的Connection，如果是则不释放，如果不是则close
+	这时在数据库操作中，代码就变得繁多，因为添加了创建con对象和释放资源。我们就可以自己写一个TxQueryRunner
+类继承QueryRunner，重写其不带有Connection的方法，为其加上事务对象的创建，和JDBCUtils中的释放资源。
+问题3：
+	多线程问题，多个线程调用beginTransaction方法时，第一个创建了con，第二个想创建时发现con不为null，抛出
+了异常。我们要实现多线程并发事务，就可以使用ThreadLocal类，每个线程一个连接副本，互不影响

@@ -1,0 +1,31 @@
+BOM对象
+	一共有五种：Window,Navigator,Screen,History,Location
+	重点掌握：Window,History,Location
+
+Window
+	Window 对象表示浏览器中打开的窗口。
+	对象属性中包含了只读引用的其他四种对象。
+	
+	重要方法：
+		alert() 显示带有一段消息和一个确认按钮的警告框。 
+		prompt() 显示可提示用户输入的对话框。  
+		confirm() 显示带有一段消息以及确认按钮和取消按钮的对话框。 
+		setInterval() 按照指定的周期（以毫秒计）来调用函数或计算表达式。
+			有一个返回值，提供给clearInterval使用
+		clearInterval() 取消由 setInterval() 设置的 timeout。 
+		setTimeout() 在指定的毫秒数后调用函数或计算表达式。
+			有一个返回值，提供给clearTimeout使用
+		clearTimeout() 取消由 setTimeout() 方法设置的 timeout。
+
+History
+	History 对象包含用户（在浏览器窗口中）访问过的 URL。
+	对象属性length,返回访问过url数量
+	对象方法：(可以配合onclick事件与button元素使用)
+		back() 加载 history 列表中的前一个 URL。 
+		forward() 加载 history 列表中的下一个 URL。 
+		go() 加载 history 列表中的某个具体页面。 
+
+		
+Location
+	Location 对象包含有关当前 URL 的信息。
+	对象属性：href 设置或返回完整的 URL。 

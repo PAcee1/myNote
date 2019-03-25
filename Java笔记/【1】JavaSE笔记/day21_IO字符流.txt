@@ -1,0 +1,69 @@
+字符流
+	Reader
+		|--InputStreamReader
+			|--FileReader
+		|--BufferedReader
+	Writer
+		|--OutputStreamWriter
+			|--FileWriter
+		|--BufferedWriter
+		
+	(1)字节流操作中文数据不是特别的方便，所以就出现了转换流。
+	   转换流的作用就是把字节流转换字符流来使用。
+	   
+	(2)转换流其实是一个字符流
+		字符流 = 字节流 + 编码表
+		
+	(3)编码表
+		A:就是由字符和对应的数值组成的一张表
+		B:常见的编码表
+			ASCII
+			ISO-8859-1
+			GB2312
+			GBK
+			GB18030
+			UTF-8
+		C:字符串中的编码问题
+			编码
+				String -- byte[]
+			解码
+				byte[] -- String	
+			
+		编码问题，只要编码解码格式一致就不会有问题	
+	
+	(4)IO流中的编码问题 转换流 字节流-》字符流
+		A:OutputStreamWriter
+			OutputStreamWriter(OutputStream os):默认编码，GBK
+			OutputStreamWriter(OutputStream os,String charsetName):指定编码。
+		B:InputStreamReader
+			InputStreamReader(InputStream is):默认编码，GBK
+			InputStreamReader(InputStream is,String charsetName):指定编码
+
+	(5)OutputStreamWriter	
+		close()和flush()区别：
+			flush()：刷新缓冲区，刷新后，流对象可以继续使用。
+					 再写入特别大的数据时使用，每个阶段刷一次。
+			close()：关闭流对象，但是关闭前会先刷新一下缓冲区，关闭后流对象不可用。
+					 一般用close()就可以了。
+					 
+	(6)FileReader,FileWriter
+		InputStreamReader,OutputStreamWriter的子类
+		为了方便使用，把字节流和编码表封装起来，直接使用即可。
+		InputStreamReader osr = new InputStreamReader(new FileInputStream(String filename));
+		FileReader fr = new FileReader(String filename);
+		
+		OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(String filename));
+		FileWriter fw = new FileWriter(String filename);		 
+	
+	(7)BufferedReader,BufferedWriter
+		为了更高效的读写字符数据，Java提供的一种子类。
+		特殊功能：
+			BufferedWriter:
+				public void newLine(); 根据系统来写入一个换行符
+			BufferedReader:
+				public String readLine(); 一次读取一行数据，不包含换行符
+	
+	
+	
+	
+	

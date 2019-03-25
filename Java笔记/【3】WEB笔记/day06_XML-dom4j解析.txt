@@ -1,0 +1,128 @@
+dom4j (***************dom4j是重点************)
+	dom4j是一个组织，针对xml解析提供解析器dom4j
+	需要导入dom4j包
+1.如何获取document对象
+	SAXReader reader = new SAXReader();
+	Document doc = reader.read(url);
+	* Document父接口Node
+	* document方法
+		getRootElement();获取根节点返回Element
+		
+2.Element对象
+	* getParent();获取父节点
+	* addElement();增加标签
+	* element(qName);返回标签下的第一个qname子标签
+	* elements(qname);返回标签下所有qname子标签(一层)
+	* elements();获取下面所有一层子标签
+	
+3.dom4j实例
+	- 创建解析器  (SAXReader reader = new SAXReader();)
+	- 创建Document对象  (Document doc = reader.read(url);)
+	- 获取根节点  (getRootElement();)
+	1)查询xml
+		* 查询所有name节点的值
+			- 获取name节点父节点p1的List集合 (elements("p1"))
+			- 遍历p1集合获取name节点
+			- 获取name节点中的值返回String
+			- 打印String
+		* 查询第一个name节点的值
+			- 获取第一个p1节点 (element("p1"))
+			- 获取第一个name节点
+			- 获取name节点值返回String
+			- 打印String
+		* 查询第二个name节点的值
+			- 获取name节点父节点p1的List集合 (elements("p1"))
+			- 获取第二个p1节点 (list.getIndex(1))
+			- 获取name节点
+			- 获取name节点值返回String
+			- 打印String
+	2)xml中添加节点
+		* 在第一个p1节点末尾添加新节点
+			- 获取第一个p1节点
+			- 在节点最后添加sex节点，返回元素 (addElement("sex"))
+			- 在新节点中添加文本 (setText("female"))
+			- 回写xml
+				** XMLWriter xmlw = new XMLWriter(file, format);
+					- 第一个参数xml文件路径 new FileOutputStream("路径")
+					- 第二个参数是格式化类的对象，OutputFormat.createPrettyPrint() 
+				** xmlw.write(document) 调用write方法回写到document中
+				** xmlw.close() 释放资源
+		* 在第一个p1节点age子节点前添加新节点school
+			- 获取p1节点
+			- 获取p1节点里所有子节点 (elements())
+			- 创建新节点添加文本内容 (DocumentHelper.createElement("school"),setText())
+			- 使用集合list.add(index,Element)方法添加到之前位置之前
+			- 回写xml
+	3)xml修改节点内容
+		* 修改第一个p1下age的值
+			- 获取第一个p1节点
+			- 获取age节点
+			- 修改age节点 (setText())
+			- 回写xml
+	4)xml删除节点
+		* 删除p1下school节点
+			- 获取p1节点
+			- 获取school节点
+			- 使用p1.remove()方法删除school
+			- 回写xml
+	5)获取xml节点属性值
+		* 获取p1节点id属性值
+			- 获取p1节点
+			- 获取id属性值 (p1.attributeValue())
+			- 打印属性值
+
+4.使用dom4j支持xpath的操作
+	* 可以直接获取到某个元素 
+	* 第一种形式
+		/AAA/DDD/BBB： 表示一层一层的，AAA下面 DDD下面的BBB
+	* 第二种形式
+		//BBB： 表示和这个名称相同，表示只要名称是BBB，都得到
+	* 第三种形式
+		/*: 所有元素
+	* 第四种形式
+		**　BBB[1]：　表示第一个BBB元素
+		××　BBB[last()]：表示最后一个BBB元素
+	* 第五种形式
+		** //BBB[@id]： 表示只要BBB元素上面有id属性，都得到
+	* 第六种形式
+		** //BBB[@id='b1'] 表示元素名称是BBB,在BBB上面有id属性，并且id的属性值是b1
+	* Xpath使用方式
+		Document.selectNodes("xpath");//获取多个节点
+			- 返回是存储Node类型的集合
+		Document.selectSingleNode("xpath");//获取一个节点
+			- 返回是Node类型
+5.dom4jxpath实例
+	1)获取所有name节点值
+		- 获取document
+		- 获取//name集合List (selectNodes("//name"))
+		- 遍历集合
+		- 使用getText()获取结果
+	2)获取第一个p1下name的值(使用id)
+		- 获取document
+		- 使用表达式得到name的Node对象
+			** "//p1[@id="p1p1p1p1"]/name"
+		- 打印Node.getText()
+
+6.使用dom4j实现简单学生管理系统
+	* 创建解析器
+	* 得到document
+	** 增加操作
+		* 获取到根节点
+		* 在根节点上面创建stu标签
+		* 在stu标签上面依次添加id name age
+		* 在id name age上面依次添加值
+		* 回写xml
+	** 删除操作（根据id删除）
+		* 获取到所有的id	(使用xpath=//id返回list集合)
+		* 遍历list集合
+		* 判断集合里面的id和传递的id是否相同
+		* 如果相同，获取id父节点stu
+		* 获取stu父节点
+		* 使用stu父节点把stu删除
+	** 查询操作（根据id查询）
+		* 获取到所有的id	(使用xpath=//id返回list集合)
+		* 遍历list集合
+		* 判断集合里面的id和传递的id是否相同
+		* 如果相同，先获取到id的父节点stu
+		* 通过stu获取到name age值
+		* 把这些值封装到一个对象里面 返回对象

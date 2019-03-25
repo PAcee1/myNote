@@ -1,0 +1,249 @@
+MyBatis
+============================一、MyBatis简介============================
+1.1 什么是MyBatis
+	· MyBatis是支持定制sql，存储过程及高级映射的优秀持久层框架
+	· MyBatis让程序主要精力放在sql上，通过MyBatis提供映射方式半自动生成sql语句
+	· MyBatis使用简单的xml或注解配置初始化映射，从而实现接口和java的pojo映射为数据库中记录
+
+1.2 MyBatis历史
+	MyBatis最开始是Apache的一个开源项目iBatis，之后迁移到了goolecode，并改名为MyBatis，最后
+又迁移到了github中。
+	github地址：https://github.com/mybatis/mybatis-3
+
+1.3 MyBatis优势
+	数据库操作：
+		编写sql-->预编译-->配置参数-->执行sql-->处理结果集
+	JDBC：JDBC-->DBUtils(QueryRunner)-->JDBCTemplate
+		功能简单，sql语句编写在java代码中，参数和结果集也是相同，硬编码高耦合，不利于系统维护
+	Hibernate：
+		· 功能简单，开发人员不需要会写sql语句就能实现对数据操作，所有步骤黑箱操作，sql语句会全自动生成
+	是一个全自动全映射的框架，旨在消除sql。
+		· 处理复杂业务时，灵活性差，修改sql语句需要额外学习hql，其HQL复杂难写，不容易做优化
+		· 因为是全映射自动化框架，他会把所有记录映射到javabean中，如果只想查询一个username，
+	这种操作就会导致数据库性能下降
+	MyBatis：
+		· 专注于sql，程序员自己编写sql语句，对其修改优化简单方便，
+		· sql与java编码分离，功能边界清晰。
+		· MyBatis也可以实现输入映射，输出映射的自动化，可以说是一个半自动轻量框架。
+
+============================二、MyBatis-HelloWorld============================
+
+2.1 入门-MyBatis第一次使用
+	jar包：
+		log4j.jar：查看运行日志，MyBatis不依赖它
+		mybatis-3.4.1.jar：MyBatis核心jar包，版本为3.4.1
+		mysql-connector-java-5.1.37-bin.jar：mysql连接包
+	sql：创建一张员工表
+	domain：创建对象的javaBean类
+	conf：所需配置文件
+		log4j.xml -- 不关心，用来看运行日志，直接拷贝即可
+		mybatis-config.xml
+			· mybatis的全局配置文件，
+			· 数据库连接池配置信息
+			· sql映射文件配置信息
+		EmployeeMapper.xml -- sql映射文件
+	dao：mybatis使用测试
+		1.根据mybatis-config全局配置文件，利用SqlSessionFactoryBuilder创建SqlSessionFactory工厂
+		2.根据工厂对象创建SqlSession对象，该对象表示与数据库的一次会话
+		3.使用sqlSession.selectOne(arg0,arg1)获取Bean对象
+			- 第一个参数为sql映射文件中的命名空间+id(防止id重复)
+			- 第二个参数为sql语句的查询参数
+	注意：
+		· sql映射文件需要在mybatis-config全局配置中配置
+		· 如果Bean中变量名与sql表元素名不同，可以使用取别名的方法对应起来。
+
+2.2 使用接口式编程
+	上面的项目有一处问题：
+		在测试类中，为sqlSession.selectOne()传递第二个参数时，没有约束参数类型，如果传递不同数据类型
+	这样就查不出数据了
+
+	改进：
+		使用接口式编程
+		1.创建一个EmployeeMapper接口类，抽象方法 public Employee getEmpById(Integer id)
+		2.在sql映射文件中命名空间配置为该接口全限定类名
+		3.select标签的id改为方法名
+		4.在测试类中先获取接口类实现类由sqlSession利用代理创建，sqlSession.getMapper(Class<>)
+		5.使用实现类的getEmpById方法获取Employee对象
+	这样有效保障参数数据类型的约束，也是在实际开发中用的比较多的方法。
+
+2.3 小结
+	1)SqlSession代表与数据库的一次会话，用完必须关闭
+	2)SqlSession和Connection一样是线程不安全的，每次调用会获取新的对象
+	3)mapper接口没有实现类，但MyBatis会为其创建一个代理对象使用
+		接口需要和xml文件绑定
+		EmployeeMapper mapper = sqlSession.getMapper(EmployeeMapper.class);
+	4)两个重要的配置文件
+		MyBatis全局配置文件：包含数据库连接池信息，事务管理器信息，系统运行环境等信息
+		sql映射文件，保存每一个sql语句的映射，将sql抽取出来
+
+============================三、MyBatis-全局配置文件============================
+
+MyBatis的全局配置文件影响MyBatis的行为
+注意：设置的顺序不能改变，比如settings不能放在properties前
+
+3.1 properties 属性
+	设置properties标签可以引入外部配置文件
+		有两个属性：
+		resource：引入类路径下的资源
+		url：引入网络资源或本地磁盘下的资源
+3.2 settings 设置
+· 对MyBatis很重要的设置，会改变MyBatis运行时行为
+· 在这里先学习mapUnderscoreToCamelCase，别的之后用到在学
+	mapUnderscoreToCamelCase：驼峰命名规则，默认关闭,设置true打开
+		指从数据库中a_column到java属性名aColumn(第二个首字母大写)的类似映射
+	<settings>
+		<setting name="mapUnderscoreToCamelCase" value="true"/>
+	</settings>
+3.3 typeAliases 类型别名
+· 为全限定类名起别名
+	<typeAlias type="" alias=""> 为单个类起别名
+		type：起别名的全限定类名，如果没有alias属性，默认别名为首字母小写的类名
+		alias：自定义别名
+	<package name=""> 批量起别名
+		name：指定包名，为当前包和后代包起默认别名	
+			  如果包和后代包中有相同类名，就会出现冲突，要使用 @Alias
+		@Alias：在类上添加注解指定别名
+3.4 typeHandler 类型处理器
+3.5 plugins插件
+	可以在映射语句执行过程中进行拦截
+	四大对象：
+		Executor (update, query, flushStatements, commit, rollback, getTransaction, close, isClosed)
+		ParameterHandler (getParameterObject, setParameters)
+		ResultSetHandler (handleResultSets, handleOutputParameters)
+		StatementHandler (prepare, parameterize, batch, update, query)
+
+3.6 environments 环境
+· MyBatis可以设置多个环境，使用default=""来选择使用哪个环境
+	<environment id="">
+		环境，id为唯一标识符，必须设置两个属性
+	    	transactionManager:事务管理器
+	    		type：事务管理类型， JDBC(JdbcTransactionFactory)|MANAGED(ManagedTransactionFactory)
+	    			自定义事务管理器，写一个类实现TransactionFactory接口
+	    	dataSource:数据库连接池
+	    		type：连接池类型，UNPOOLED(UnpooledDataSourceFactory)
+	    					      POOLED(PooledDataSourceFactory)
+	    					      JNDI(JndiDataSourceFactory)
+	    			自定义连接池类型，实现DataSourceFactory接口
+		<transactionManager type=""/>
+		<dataSource type=""></dataSource>
+	</environment>
+
+3.7 databaseIdProvider 数据库厂商标识
+	· 支持多数据库厂商
+	· type="DB_VENDOR" 得到数据库厂商标识，MySQL，Oracle，SQL Server，xxx
+	· 在环境中设置id为dev_数据库别名，可以有效替换数据库
+	· 在Mapper.xml中select设置属性databaseid=""，可以指定使用哪种数据库查询
+		如果有没指定数据库和指定数据库两种，优先使用指定数据库的sql语句
+	<databaseIdProvider type="DB_VENDOR">
+	    <!-- 为不同的厂商起别名 -->
+	    <property name="MySQL" value="mysql"/>
+	    <property name="Oracle" value="oracle"/>
+	</databaseIdProvider>
+
+3.8 mappers 映射器
+用来注册sql映射文件
+	<mapper />：注册一个sql映射
+		resource：引用类路径下的sql映射文件
+		url：引用网络路径或磁盘路径下的映射文件 file://....
+		class:注册引用接口
+			包下有接口对应的sql映射文件：映射文件必须与接口同名，直接使用接口的全限定类名
+			包下没有接口对应sql映射文件：在接口必须实现注解配置sql语句，@Select
+			建议：比较重要复杂的dao接口使用sql映射，不重要简单不需要修改的使用注解
+	
+	<package name="存放dao包名"/>：批量注册
+		如果嫌sql映射文件和java文件会弄混，可以在conf包下创建一个相同包名，也相当于在同一个包下，
+	因为最后都会整合
+
+============================四、MyBatis-映射文件============================
+
+4.1 映射文件之insert
+insert元素定义插入操作
+	4.1.1 insert_获取自增主键的值
+	<insert>标签上设置属性：
+		parameterType：参数类型，可以省略
+		useGeneratedKeys="true":支持使用自增主键获取主键值
+		keyProperty="":指定主键的属性，即获取后封装到JavaBean中的哪个属性
+
+	4.1.2 insert_获取非自增主键的值
+	有的数据库主键不是自增的，或主键没有设置为自增
+	在insert标签中添加<selectKey>标签
+		<selectKey keyProperty="" order="BEFORE" resultType="Integer">
+			keyProperty:查出的主键封装给Bean中哪个属性
+			order:select语句运行顺序
+				BEFORE：本语句在插入语句前执行
+					先运行selectKey，查出主键id后，封装到Bean中
+					运行insert时，就可以取出id属性的值
+				AFTER：本语句在插入语句后执行
+					先运行insert语句，从序列中取出新值作为id
+					再运行selectKey查询id的sql
+			resultTpye：取出主键的类型
+
+4.2 映射文件之参数处理(select)
+	4.2.1 参数处理_单个参数，多个参数，命名参数
+	单个参数：MyBatis不会做特殊处理
+		#{参数名}：取出参数值
+	多个参数：MyBatis会做特殊处理，把参数集放入map中
+	  · 刚开始的sql语句：select * from tbl_employee where id = #{id} and last_name = #{lastName}
+		运行时发现报错
+			### Cause: org.apache.ibatis.binding.BindingException：出错
+			 Parameter 'id' not found. 未找到参数id
+			 Available parameters are [0, 1, param1, param2]，可以使用的参数为索引或参数列
+			MyBatis教我们使用参数索[(0,1..N)|(param1...paramN)]引来代替没有命名的参数名(id,lastName)
+	  · 修改后sql：
+			- select * from tbl_employee where id = #{param1} and last_name = #{param2} 成功查询
+				这时的map：key={param1,param2};
+			- select * from tbl_employee where id = #{0} and last_name = #{1} 成功查询
+				这时的map：key={0,1};
+	命名参数：在接口Mapper的抽象方法上添加注解， @Param("id")
+		方法：public Employee getEmpByIdAndName(@Param("id")Integer id,@Param("lastName")String lastName);
+		sql：select * from tbl_employee where id = #{id} and last_name = #{lastName}
+			这时的map：key={id,lastName}
+
+	4.2.2 参数处理_POJO&Map
+	POJO：如果参数整合是业务逻辑的数据模型，可以使用pojo
+		#{参数名}：取出pojo属性值
+	Map：创建Map，方法传入Map参数
+		方法：public Employee getEmpByMap(Map map);
+		参数存入：Map.set(key,value)
+		sql：select * from tbl_employee where id = #{id} and last_name = #{lastName}
+
+	4.2.3 参数处理_#号与$号区别
+	#{}和${}都可以获取map中的值或pojo对象中的值
+	两者区别：
+		#{}：采用预编译方式(占位符)，将参数设置到sql语句中，PreparedStatement：防止sql注入
+		${}：采用直接取值拼接在sql语句中，有安全问题。
+	两者使用：
+		#{}：大多数情况下都使用这个
+		${}：在jdbc原生不支持占位符的地方就可以使用${}，比如分表、排序。。。；按照年份分表拆分
+			select * from ${year}_salary where xxx;
+			select * from tbl_employee order by ${f_name} ${order}
+			
+	4.2.4 #取值是指定采纳数相关规则
+	规定参数的一些规则：
+	javaType、 jdbcType、 mode（存储过程）、 numericScale、
+	resultMap、 typeHandler、 jdbcTypeName、 expression（未来准备支持的功能）；
+
+	jdbcType通常需要在某种特定的条件下被设置：
+		在我们数据为null的时候，有些数据库可能不能识别mybatis对null的默认处理。比如Oracle（报错）；
+		JdbcType OTHER：无效的类型；因为mybatis对所有的null都映射的是原生Jdbc的OTHER类型，oracle不能正确处理;
+		由于全局配置中：jdbcTypeForNull=OTHER；oracle不支持；两种办法
+		1、#{email,jdbcType=OTHER};
+		2、jdbcTypeForNull=NULL
+			<setting name="jdbcTypeForNull" value="NULL"/>
+
+4.3 参数处理之select
+select元素定义查询操作
+
+
+============================五、MyBatis-动态SQL============================
+
+**************************************
+============================六、MyBatis-缓存机制============================
+============================七、MyBatis-Spring整合============================
+============================八、MyBatis-逆向工程============================
+
+**************************************
+九、MyBatis-工作原理
+十、MyBatis-插件开发
+
+

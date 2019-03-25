@@ -1,0 +1,14 @@
+字节缓冲区流
+	A:BufferedOutputStream
+	B:BufferedInputStream
+	Java专门提供带缓冲区的字节流，可以高效读取写入数据。
+	
+	构造方法可以指定缓冲区大小，但是一般用不上，默认缓冲区大小就足够了。
+	
+	BufferedOutputStream(OutputStream out)
+	为什么不传递一个具体的文件或路径，而是一个OutputStream对象呢？
+		因为BufferedOutputStream仅仅提供一个缓冲区，为了高效而设计，但
+	真正的读写操作还得靠基本流对象实现。（相当于一个水杯，基本流相当于水）
+	
+	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("bos.txt"));
+	

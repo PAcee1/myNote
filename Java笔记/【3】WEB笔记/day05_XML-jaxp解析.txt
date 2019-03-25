@@ -1,0 +1,142 @@
+XML解析 (****重点****)
+1.解析技术：dom和sax
+	* dom:根据xml的层级结构在内存中分配一个树形结构，将标签属性文本封装成对象
+		缺点：如果文件过大，会造成内存溢出
+		优点：增删改操作实现简单
+	* sax:采用事件驱动，边读边解析，从上到下，一行一行解析对象返回名称
+		缺点：不能实现增删改操作
+		优点：查询简单，不会造成内存溢出
+		
+	* 解析xml需要解析器：
+		sun公司dom和sax解析器	jaxp
+		dom4j公司解析器		dom4j(实际开发常用)
+
+2.jaxp解析dom
+	* jaxp是javase中的一部分
+	* 在jdk的javax.xml.parsers包里
+	* 包中有四个类
+		- DocumentBuilder:解析类
+			** 抽象类不能被实例化，利用多态
+				- DOcumentBuilderFactory.newDocumentBuilder();
+			** public Document parse(String uri);//解析XML文档，返回Document对象
+			** Document对象操作dom对象(类似js中dom)
+				*** document是一个接口，父节点是Node
+				- getElementsByTagName(String tagname);
+					-- 得到标签
+					-- 返回集合NodeList
+				- createElement(String tagName);
+					-- 创建指定类型元素
+					-- 返回Element对象
+				- createTextNode(String data)
+					-- 创建给定字符串的Text节点
+					-- 返回Text对象
+			** Node
+				- appendChild(Node newChild) 
+					-- 把文本添加到标签下面
+					-- 返回Node对象
+				- removeChild(Node oldChild) 
+					-- 删除节点
+					-- 返回Node对象
+				- getParentNode() 
+					-- 获取父节点
+					-- 返回Node对象
+				- getTextContent()
+					-- 得到标签里面的内容
+					-- 返回String对象
+			** NodeList 用来遍历获取标签
+				- int getLength(); //获取节点数
+				- Node item(int index); //获取第index项数据
+		- DOcumentBuilderFactory:解析器工厂
+			* 这个类也是一个抽象类，不能new
+			* newInstance() 获取 DocumentBuilderFactory 的实例。
+			
+		- SAXParser:sax解析类
+		- SAXParserFactory:sax解析器工厂
+
+3.jaxp解析dom案例
+	* static{ 
+		创建解析器工厂
+		创建解析器
+		创建Document对象实例
+	}
+	- 查询节点
+		* 得到节点NodeList集合 -getElementsByTagName(String tagname),
+		* 循环NodeList获取Node对象 -Node item(i);
+		* 获取Node对象值 -String getTextContent();
+	- 添加节点
+		* 得到p1节点NodeList集合 -getElementsByTagName(String tagname),
+		* 获取第一个p1对象 -Node item(0);
+		* 创建新元素 -Element createElement(String tagName);
+		* 创建新元素的内容 -Text createTextNode(String data);
+		* 新元素添加内容，父节点添加新元素 -appendChild();
+		* 回写xml
+		- TransformerFactory,Transformer;回写需要的类对象
+		- transform(new DOMSource(Document对象),new StreamResult("xml路径"))
+			- 使用transform(参数，参数)方法回写xml
+	- 修改节点
+		* 获取需要修改的Node对象 -getElementsByTagName(String tagname).item(0);
+		* 调用setTextContent(String data)方法
+		* 回写XML
+	- 删除节点
+		* 获取需要修改的Node对象 -getElementsByTagName(String tagname).item(0);
+		* 获取node对象的父节点
+		* 父节点调用removeChild(Node node)方法删除该节点
+		* 回写XML
+	- 遍历节点
+		使用递归
+		* 创建函数传递Node参数
+		* 判断是否为Node.Element_NODE元素，是则打印元素名
+		* 得到该节点子节点集合
+		* 遍历子节点集合，调用该函数传递被遍历的子节点
+		
+4.sax解析过程分析
+	* sax解析也在包javax.xml.parsers包里
+		** SAXParser
+			实例：SAXParser.newSAXParser()
+			解析xml：parse(File f,DefaultHandler dh)
+				- 第一个参数：xml路径
+				- 第二个参数：事件处理器
+		** SAXParserFactory
+			实例通过方法newInstance()得到
+	* sax执行过程(根据DefaultHandler)
+		** 当解析到开始标签时，自动执行startElement方法，返回标签名称
+		** 当解析到文本时，自动执行characters方法，返回字符串对象
+		** 当解析到结束标签是，自动执行endElement方法，返回标签对象
+		
+5.使用jaxp解析sax
+	* 只能实现查询，不能实现增删改
+	- 创建SAXParserFactory工厂对象
+	- 创建SAXParser解析器对象
+	- 调用解析器对象parse方法
+	- 创建类继承DefaultHandler类
+	- 重写startElement,characters,endElement方法
+	
+	* 实例
+		** 获取所有标签和内容
+			- 重写时写上syso即对应格式
+		** 获取name标签的内容
+			- 定义成员变量flag=false
+			- startElement中如果pName=name，flag变为true
+			- characters中如果flag为true打印String文本
+			- endElement方法中flag改成false
+		** 获取第一个name标签内容
+			- 前面和上一题一样
+			- 多定义一个index=0
+			- startElement中如果name，index++
+			- characters中多判断index是否为1
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		

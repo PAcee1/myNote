@@ -1,0 +1,218 @@
+一、JSP
+1.1 什么是JSP
+	java server pages，指java服务器页面，是一个简化包装过的Servlet，可以实现html中加入java字段
+和jsp标记，从而简化Servlet向html页面输出。
+1.2 JSP和Servlet的分工
+	- Servlet：处理请求，做出动态响应
+	- JSP：实现请求发起页面，表单or超链接
+		   实现请求结束页面(响应页面)，显示数据		
+1.3 JSP的组成
+	- html+java脚本+jsp标签
+	- jsp无需创建即可使用的对象，有九大内置对象，例如：request，out
+	- 三种java脚本：
+		* <%...%> java代码片段，可以存放java方法中可以写的所有代码
+		* <%=...%> 输出语句，response.getWriter().print( ... );这里能放什么,它就可以放什么
+		* <%!...%> 声明语句，类似java中class类，声明成员变量成员方法
+	- 案例：jsp与Servlet分工，两数相加
+1.4 JSP原理
+	- jsp是一种特殊的Servlet，工作原理：
+		* 浏览器第一次访问服务器的jsp页面
+		* 服务器读取jsp文件
+		* 将jsp文件编译成java文件(JspServlet解析)
+		* 将.java文件编译成.class文件
+		* 创建jsp(Servlet)对象
+		* 调用对象的service()方法完成响应
+	- .java和.class文件存放在tomcat的work目录下
+	- 根据java文件源码
+		* 先创建9大内置对象，相当于响应头
+		* html代码会使用out.write("")打印
+		* <%...%>java代码会原封不动的放在里面
+		* <%=...%>会使用out.print()打印，输出的是变量的值
+		* 尾部：异常相关
+			** 如果jsp中的java代码有bug，他之前的html或java代码不会输出到页面上
+			** 因为执行在缓冲区，如果出现异常会重定向到别的页面
+1.5 JSP注释 <%-- --%> 
+	(<!-- <%=aaa%> -->)里面的java代码会执行但不会显示
+
+二、JSP指令
+	分为三大指令：page,include,taglib
+	没有必须使用的指令但是一般都会使用page
+2.1 page指令 最常用最复杂
+	* import：相当于java的import，导包用
+		- <%@ page import="java.util.*, java.net.*" %>
+		- 一个jsp可以出现多个page指令，import指令可以重复出现
+	* pageEncoding和contextType 
+		pageEncoding：指定当前页面编码
+		contextType：表示增加一个响应头，相当于response.setContextType("text/html;charset=utf-8")
+		- pageEncoding和contextType关系暧昧，如果只设置一个，另一个的默认值为设置的
+		- 如果俩都没设置，默认iso-8859-1
+	* errorPage和isErrorPage
+		errorPage：如果当前页面抛出异常，就转发到errorPage设置的页面 
+			- <%@ page errorPage="a.jsp" %>
+		isErrorPage：指定当前页面为处理错误的页面，设置为true
+			- <%@ page isErrorPage="true" %>
+			- 如果设置true，就可以使用九大内置对象中的exception，状态码为500
+		也可以在web.xml中设置和errorPage一样的效果
+			<error-page>
+				<error-code>500</error-code> //指定响应码
+				<location>/error500.jsp</location> //指定转发页面
+			</error-page>
+			<error-page>
+				<exception-type>java.lang.RuntimeException</exception-type> //指定异常类型
+				<location>/error.jsp</location>
+			</error-page>
+	----- 以下了解即可 -----
+	* autoFlush和buffer
+		- autoFlush：指定jsp的输出流缓冲区满时，是否自动刷新！默认为true，如果为false，那么在缓冲区满时抛出异常！
+		- buffer：指定缓冲区大小，默认为8kb，通常不需要修改！
+    * isELIgnored：是否忽略el表达式，默认值为false，不忽略，即支持！
+    * 基本没用：
+		- language：指定当前jsp编译后的语言类型，默认值为java。
+		- info：信息！
+		- isThreadSafe：当前的jsp是否支持并发访问！
+		- session：当前页面是否支持session，如果为false，那么当前页面就没有session这个内置对象！
+		- extends：让jsp生成的servlet去继承该属性指定的类！
+2.2 include指令 静态导入
+	<%@include file="页面"%>
+	include指令作用是包含指定页面，在编译时期合并，即将file中的java语句保存到本页面中一并编译
+	注意：file里不能用<%=path %>，因为是编译时期合并，而变量path只有在class执行时才知道和谁合并
+		  file页面中不要写和本页面相同的头文件等，一般只写java语句
+		  放在<body>中
+2.3 taglib指令
+	用来在当前导入第三方标签库
+	<%@taglib prefix="x" uri="path" %>
+	prefix:指定标签前缀，可以随意起名。- x:标签名
+	uri：标签库地址
+2.4 九大内置对象
+	-out(JspWriter):等同于response.getWriter()，向客户端发送文本数据
+	-page(JSP真身类型)：相当于this关键字，为Object类型，一般不用
+	-config(ServletConfig)
+	-pageContext:
+	-request（HttpServletRequest）
+	-response（HttpServletResponse）
+	-session（HttpSession）
+	-exception（Throwable）：只有在错误页面中可以使用这个对象
+	-application（ServletContext）
+2.5 pageContext
+	* 一顶九
+	* Servlet有三大域，JSP有四大域
+		- ServletContext：整个应用程序
+		- session：整个会话
+		- request：一个请求链
+		- pageContext:一个jsp页面，页面与标签间共享数据
+			** 可以代理其他域：pageContext.setAttribute("x","x",PageContext.SESSION_SCOPE);
+			** 获取其他8个内置对象，pageContext.getSession()
+			** 全域查找：pageContext.findAttribute("xxx");
+				-- 从小到大，依赖查找,注意属性同名问题。防止同名一般使用"request_xxx"
+
+三、JSP动作标签
+	动作标签是由服务器执行的，类似java代码，html是由浏览器执行的
+	* <jsp:forward>：转发，与RequestDispatcher.forward方法一样，一个在jsp执行，一个在Servlet中执行
+	* <jsp:include>：合并，与RequestDispatcher.include方法一样
+		- 这是动态的合并，在运行时合并，底层调用了api，输出两个页面的结果，work下有两个class文件
+		- @include是静态合并，编译时合并，work下只有一个class文件
+	* <jsp:param>
+		是forward或include的子标签，用来向转发或合并的页面传递参数
+		<jsp:include page="/b.jsp">
+			<jsp:param name="username" value="zhangSan"/> 
+		</jsp:include>
+		在b.jsp中可以使用request.getParameter("username")来获取参数值。
+	
+四、JavaBean
+4.1 JavaBean规范
+	* 有空参构造器
+	* 有多个get/set方法，如果只有get那么为只读属性
+	* 属性：有get/set方法的成员，如果没有成员即get/set方法后跟着的名称
+		    如果是boolean类型属性，get方法可以是is开头
+4.2 内省
+	内省依赖反射，用来操作javabean类
+	1)通过字符串获取class对象
+	2)创建class的Object对象，getInstance()
+	3)使用Introspector创建BeanInfo类对象
+		- BeanInfo binfo = Introspector.getBeanInfo(bean)
+	4)获取所有属性描述对象
+		- PropertyDiscriptor[] pd = binfo.getPropertyDiscriptor();
+	5)根据getReadMethod，getWriteMethod操作JavaBean属性
+4.2 BeanUtils
+	commons-beanutils，它是依赖内省完成！
+	* 导包：
+		> commons-beanutils.jar
+		> commons-logging.jar
+	* 方法：
+		BeanUtils.getProperty(Object bean, String propertyName)
+		BeanUtils.setProperty(Object bean, String propertyName, String propertyValue)
+		BeanUtils.populate(Map map, Object bean)
+		CommontUtils.toBean(Map map, Class class)
+4.3 jsp中与javaBean相关的标签
+	<jsp:useBean>
+		<jsp:useBean id="user1" class="cn.zhao.domain.User" scope="session">
+		在session域中查找名为user1的User类，如果没有创建
+	<jsp:setProperty>
+		<jsp:setProperty name="user1" property="username" value="admin">
+		设置user1中名为username的属性值为admin
+	<jsp:getProperty>
+		<jsp:setProperty name="user1" property="username">
+		获取user1中名为username的值
+
+五、EL表达式
+5.1 EL入门
+	* EL是JSP内置表达式语言，jsp2.0开始不让使用java脚本，用el表达式和动态标签替代，el替代<%=.. %>，el只能输出
+	* EL表达式读取四大域
+		- ${xxx}，全域查找名为xxx的属性，如果不存在，输出空字符串，而不是null。
+		- ${pageScope.xxx}、${requestScope.xxx}、${sessionScope.xxx}、${applicationScope.xxx}，指定域获取属性！
+			注意：一定要加Scope
+	* EL获取javaBean
+		- User(){name,Address} Address(){City,Street}
+		- request.setAttribute("user",user)
+		- ${requestScope.getAttribute.address.street}
+5.2 EL内置对象
+	11个内置对象
+	* requestScope，sessionScope，applicationScope，pageScope
+	* param：对应参数，它是一个Map，其中key参数名，value是参数值，适用于单值的参数。
+		- ${param.username}
+	* paramValues：对应参数，它是一个Map，其中key参数名，value是多个参数值，适用于多值的参数。
+		- ${paramValues.test[0]} ${paramValues.test[1]} 
+	* header：对应请求头，它是一个Map，其中key表示头名称，value是单个头值，适用于单值请求头
+		- ${header['User-Agent']}
+	* headerValues：对应请求头，它是一个Map，其中key表示头名称，value是多个头值，适用于多值请求头
+	* initParam：获取<context-param>内的参数！
+		- ${initParam.aaa}
+	* cookie：Map<String,Cookie>类型，其中key是cookie的name，value是cookie对象。 
+		- ${cookie.username.value}
+	* pageContext：它是PageContext类型！
+		- ${pageContext.request.contextPath} 注意，以后表单超链接的项目名都用这个表示
+
+5.3 EL函数库（由JSTL提供的）
+	什么EL是函数库
+　　- EL函数库是由第三方对EL的扩展，我们现在学习的EL函数库是由JSTL添加的。
+	- EL函数库就是定义一些有返回值的静态方法。然后通过EL语言来调用它们，我们可以自定义EL函数库。
+　　- EL函数库中包含了很多对字符串的操作方法，以及对集合对象的操作。例如：${fn:length(“abc”)}会输出3，即字符串的长度。
+
+	* 导入标签库：<%@ tablib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+	String toUpperCase(String input)：把参数转换成大写
+	String toLowerCase(String input)：把参数转换成小写
+	int indexOf(String input, String substring)：从大串，输出小串的位置！
+	boolean contains(String input, String substring)：查看大串中是否包含小串
+	boolean containsIgnoreCase(String input, String substring)：忽略大小写的，是否包含
+	boolean startsWith(String input, String substring)：是否以小串为前缀
+	boolean endsWith(String input, String substring)：是否以小串为后缀
+	String substring(String input, int beginIndex, int endIndex)：截取子串，有头无尾
+	String substringAfter(String input, String substring)：获取大串中，小串所在位置后面的字符串
+	substringBefore(String input, String substring)：获取大串中，小串所在位置前面的字符串
+	String escapeXml(String input)：把input中“<”、">"、"&"、"'"、"""，进行转义
+	String trim(String input)：去除前后空格
+	String replace(String input, String substringBefore, String substringAfter)：替换
+	String[] split(String input, String delimiters)：分割字符串，得到字符串数组
+	int length(Object obj)：可以获取字符串、数组、各种集合的长度！
+	String join(String array[], String separator)：联合字符串数组！反方向的split
+5.4 自定义函数库
+	* 写一个java类，类中可以定义0~N个方法，但必须是static，而且有返回值的！
+	* 在WEB-INF目录下创建一个tld文件
+	  <function>
+		<name>fun</name>
+		<function-class>cn.itcast.fn.MyFunction</function-class>
+		<function-signature>java.lang.String fun()</function-signature>
+	  </function>
+	* 在jsp页面中导入标签库
+	   <%@ taglib prefix="it" uri="/WEB-INF/tlds/itcast.tld" %>
+	* 在jsp页面中使用自定义的函数：${it:fun() }

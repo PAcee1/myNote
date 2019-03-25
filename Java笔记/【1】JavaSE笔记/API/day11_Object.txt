@@ -1,0 +1,66 @@
+Object几个比较重要的成员方法
+	public int hashCode()
+		返回该对象的哈希值：哈希值是根据哈希算法计算出来的一个值，这个值和对象地址有关，
+		但不是实际地址，可以理解为地址值
+		
+	public final Class getClass()
+		返回此Object运行的类
+		Class类方法：
+			public String getName();Srting形式返回该类的类名
+			
+		Student s=new Student();
+		String str=s.getClass.getName();
+		syso(str);//打印 包名x.Student
+		
+	public String toString()
+		返回该对象的字符串表示
+		如果不重写该方法，打印出来的是：
+		getClass().getName() + '@' + Integer.toHexString(hashCode())
+		
+		通常，所有子类都应重写该方法
+		重写该方法最好的方式即自动生成，即shift+alt+f
+		
+		Student s=new Student();
+		syso(s);//打印的是s.toString
+		
+	public boolean equals(Object obj)
+		指示其他某个对象是否与此对象“相等”。 
+		源码：
+			public boolean equals(Object obj){
+				return (this==obj);
+			}
+		如果不重写该方法，默认比较的是两个对象的hashCode值，即地址值。
+		(==:基本类型，比较值是否相同；引用类型，比较地址是否相同)
+		(equals:只能比较引用类型,不能比较基本类型)
+		
+		重写：
+			public boolean equals(Object obj){
+				//if(this.name.equals(obj.name)&&(this.age.equals(obj.age))
+				//obj是Student父类，不能引用name,age特有属性，所以要向下转型
+				Student s=(Student)obj;
+				if(this.name.equals(s.name)&&(this.age.equals(s.age)){
+					return true;
+				}
+				esle
+					return false;
+			}
+		重写代码优化：提高效率，提高代码健壮性，可以自动生成
+			public boolean equals(Object obj){
+				if(this == obj){
+					return true;//两者相同就不用向下转型并比较了
+				}
+				if(obj instanceof Student){
+					return false;//判断obj是否为Student类的对象
+				}
+				Student s=(Student)obj;
+				return this.name.equals(s.name)&&(this.age.equals(s.age));
+			}
+		
+	protected void finalize()
+		当垃圾回收器确定不存在对该对象的更多引用时，由对象的垃圾回收器调用此方法。
+		
+	protected Object clone()
+		创建并返回此对象的一个副本，即克隆
+		实现克隆需要类实现Cloneable接口，以指示Object.clone()方法可以合法的对该类
+		进行字段复制
+	

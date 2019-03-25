@@ -1,0 +1,133 @@
+一、JDK5后出现的Lock锁
+	虽然可以通过同步代码块理解锁对象问题，但是我们并不知道在什么时候加锁和
+解锁，为了更清晰的表达如何加锁和释放锁，JDK5后提供了新锁对象Lock。
+Lock：一个接口
+	void lock(); //获取锁
+	void unlock(); //释放锁
+ReentrantLock是Lock的实现类。
+
+public class SellTickets implements Runnable{
+	private Lock lock = new ReentrantLock();
+	public void run(){
+		while(true){
+			try{
+				lock.lock();
+				被包住的代码。
+			}finally{
+				lock.unlock();
+			}
+		}
+	}
+}
+
+二、死锁
+	两个线程执行过程中因争抢资源产生的一种相互等待的现象
+	在同步中出现
+	public void run() {
+		if(flag) {
+			synchronized(MyLock.objA) {
+				System.out.println("if objA");
+				synchronized(MyLock.objB) {
+					System.out.println("if objB");
+				}
+			}
+		}else {
+			synchronized(MyLock.objB) {
+				System.out.println("else objB");
+				synchronized(MyLock.objA) {
+					System.out.println("else objA");
+				}
+			}
+		}
+	}
+
+三、生产者和消费者多线程体现(线程间通信问题)
+	不同种类的线程针对同一个资源的操作
+	
+	以学生作为资源来实现的
+		资源类：Student
+		设置数据类：SetThread(生产者)
+		获取数据类：GetThread(消费者)
+		测试类：StudentDemo
+		
+		代码：具体代码在eclipse
+			A:最基本的版本，只有一个数据。
+			B:改进版本，给出了不同的数据，并加入了同步机制,但是数据成片出现
+			C:等待唤醒机制改进该程序，让数据能够实现依次的出现
+				Object类中的三个方法
+					wait()
+					notify()
+					notifyAll() (多生产多消费)
+				为什么不定义在Thread类中呢？
+				这些方法的调用必须通过锁对象调用，而这里使用的锁对象是任意锁对象
+				所以这些方法必须在Object类中。
+			D:等待唤醒机制的代码优化。把数据及操作都写在了资源类中
+
+四、线程组
+	把一批线程进行分类管理，Java允许程序直接对线程组进行控制。	
+	获取线程组名称：
+		Thread
+			public final ThreadGroup getThreadGroup();
+		ThreadGroup
+			public final String getName();
+	默认线程组：main
+	修改线程组：
+		1.创建一个线程组
+			ThreadGroup tg = new ThreadGroup("线程组1");
+		2.创建线程时，把组指定为自己新建线程组
+			MyRunnable my = new MyRunnable();
+			Thread th = new Thread(tg,my,"线程1")
+		
+	通过组可以统一设置后台线程或优先级等，方便操作。
+		tg.setDaemon(true);
+		tg.setMaxPriority(10);
+
+五、线程池
+	程序启动一个线程成本比较高，涉及到与操作系统的交互。使用线程池可以
+很好提高性能，尤其程序中要创建大量生存期很短的线程时，更应该使用线程池。
+	
+	好处：
+		线程池中的线程代码结束后不会死亡，而是回到线程池中变成空闲状态，
+	等待下一个对象来使用。
+
+	JDK5后新增方法Executors工厂类来产生线程池
+		public static ExecutorService newCachedThreadPool();
+		public static ExecutorService newFixedThreadPool(int nThreads);
+		public static ExecutorService newSingleThreadExecutor();
+		这些方法的返回值是ExecutorService对象，该对象表示一个线程池。
+		Future<?> submit(Runnable task) 执行Runnable对象
+		<T> Future<T> submit(Callable<T> task) 执行Callable对象
+		void shutdown()； 关闭线程池
+
+	步骤：
+		a:创建线程池对象
+		b:创建Runnable实例
+		c:提交Runnable实例
+		d:关闭线程池
+
+六、第三种多线程实现方式：Callable
+	依赖线程池，有局限性，可以带有返回值，可以抛出异常。
+	Callable：带泛型的接口
+	V call() //指定的泛型是call()方法返回值类型
+       throws Exception
+
+七、定时器
+	定时器是一个线程工具，可用于调度多个定时任务以后台线程的方式执行。
+	通过Timer和TimerTask类来实现定义调度的功能
+	
+	Timer：
+		public Timer();
+		public void schedule(TimerTask task,long delay);
+		public void schedule(TimerTask task,long delay,long period);
+	TimerTask
+		public abstract void run();
+		public boolean cancel();
+
+
+
+
+
+
+
+
+	

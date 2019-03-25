@@ -1,0 +1,41 @@
+网络编程三要素：
+	IP地址：网络中计算机唯一标识
+		a:点分十进制
+		b:IP地址的组成：网络号段+主机号段
+		c:IP地址的分类：常用C类192.0.0.1-223.255.255.255
+		d:dos命令
+			ipconfig 查看本机IP
+			ping ip 测试本机与指定ip地址通信
+		e:InetAddress
+			创建InetAddress对象：
+			public static InetAddress getByName(String host);
+			获取主机名IP地址：
+			public String getHostName();
+			public String getHostAddress();
+	端口：计算机中进程的标识 (逻辑端口)
+		有效端口：0-65535，0-1024供系统使用或保留端口。
+	协议：通信的规则 (一般软件既有UDP又有TCP)
+		UDP:数据打包,数据有限制(64k),不建立连接,速度快,不可靠(不管你收没收到)。
+		TCP:建立数据通道,三次握手,无限制,效率低,可靠。
+		
+Socket
+	网络套接字：IP地址+端口号
+	原理机制：
+		通信两端都有Socket
+		网络通信其实就是Socket间的通信
+		数据在两个Socket间通过IO传输
+		
+案例：
+	A:UDP
+		a:最基本的UDP协议发送和接收数据
+		b:把发送数据改进为键盘录入
+
+	B:TCP
+		a:最基本的TCP协议发送和接收数据
+		b:服务器给出反馈
+		c:客户端键盘录入服务器控制台输出
+		d:客户端键盘录入服务器写到文本文件
+		e:客户端读取文本文件服务器控制台输出
+		f:客户端读取文本文件服务器写到文本文件
+		g:上传图片
+		h:多线程改进上传文件		

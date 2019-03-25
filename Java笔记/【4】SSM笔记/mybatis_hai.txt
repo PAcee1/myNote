@@ -1,0 +1,275 @@
+一、What_Mybatis
+1.1 原生JDBC缺点
+	1.sql语句嵌套在代码中，修改麻烦
+		解决：将sql存放在配置文件中
+	2.preparedStateMent中参数及占位符硬编码在java文件中
+		解决：存放在配置文件中
+	3.result结果集固定，也是硬编码
+		解决：将结果集映射到javabean中
+	hibernate缺点
+	是一个ORM框架，会自动生成sql语句，并进行映射，这样就对sql语句修改优化困难，适用于
+	需求变化不多的中小型项目
+	
+	mybatis
+	也是ORM框架，但是sql语句自己编写，可以说是半自动映射，这样优化修改在配置文件中
+	比较好修改。变化较多的互联网项目，大型项目
+	
+1.2 Mybatis是什么？
+	mybatis是持久层框架，用来快速高效简单的对数据库进行查询，让程序员主要精力放
+在对sql语句的编写中。
+	使用配置文件来
+		对mybatis进行全局映射
+		对输入参数自动映射
+		对输出参数自动映射为javabean对象。
+		
+1.3 mybatis框架结构
+	全局配置文件：配置数据源，事物，运行环境，映射文件
+	SqlSessionFactory：创建SqlSession的工厂
+	SqlSession：会话，用来操作数据库
+	(Excutor)：执行器，SqlSession内部的
+	mappedStatement：对数据库操作的封装，包括sql语句，输入参数，输出结果类型
+
+二、Demo_Mybatis	
+2.1 mybatis开发需要的配置文件或类
+	配置文件：
+		SqlMapConfig.xml：全局配置文件
+		XxxMapper.xml：某一类的输入输出映射文件
+	类：
+		XxxMapper.java接口
+		Test：测试类
+		Pojo：实体类（存放查询出来的数据）	
+	
+	规范：
+		xml中namespace为java接口全限定类名
+		id与接口方法一致
+		输入参数与传参类型一致
+		输出参数与返回值类型一致
+	优点：
+		减少代码量，解决硬编码，参数一致，防止运行时期异常
+	
+2.2 Tips
+	#{}和${}：
+		#{}:使用占位符，类似PreparedStatement
+			如果接受简单类型，#{}中可以写value或其他字符
+		${}:直接拼接字符串，Statement，会用sql注入等安全问题（不常使用）
+			如果接收简单类型，${}中只能写value
+	
+	SqlSession：
+		selectOne(mapperId,param)：查询一条记录，使用Pojo类接收
+		selectList(mapperId,param)：查询多条记录，使用List接收
+		insert(mapperId,param)：添加操作
+		update()
+		delete()
+
+	SqlSession生成代理，如果mapper返回时单个对象，内部使用selectOne，如果是多条记录，使用selectList
+2.3 主键返回
+	在insert一个对象时，有时需要获取其主键
+	<selectKey order="before/after" keyProperty="对象属性名" resultType="主键类型">
+	自增主键：select last_insert_id()
+	非自增主键：select uuid()
+	
+三、全局XML配置
+MyBatis 的配置文件包含了会深深影响 MyBatis 行为的设置（settings）和属性（properties）信息。文档的顶层结构如下：
+	configuration 配置
+		properties 属性
+		settings 设置
+		typeAliases 类型别名
+		typeHandlers 类型处理器
+		objectFactory 对象工厂
+		plugins 插件
+		environments 环境
+		environment 环境变量
+			transactionManager 事务管理器
+			dataSource 数据源
+		databaseIdProvider 数据库厂商标识
+		mappers 映射器
+		
+3.1 properties
+	使用properties标签，引入外部.properties文件，可以在全局配置文件中使用${}来引用。
+	demo：解决数据库链接参数硬编码
+		<properties resource="db.properties"></properties>
+		<environments default="development">
+		<environment id="development">
+			<!-- 使用jdbc事务管理-->
+				<transactionManager type="JDBC" />
+			<!-- 数据库连接池-->
+				<dataSource type="POOLED">
+					<property name="driver" value="${jdbc.driver}" />
+					<property name="url" value="${jdbc.url}" />
+					<property name="username" value="${jdbc.username}" />
+					<property name="password" value="${jdbc.password}" />
+				</dataSource>
+			</environment>
+		</environments>
+
+3.2 settings
+	Mybatis全局配置，它们会改变 MyBatis 的运行时行为。
+	http://www.mybatis.org/mybatis-3/zh/configuration.html#settings
+
+3.3 typeAliases
+	定义别名，类的全限定类名太长，为其定义别名方便开发
+	单个定义：<typeAlias type="" alias=""/>
+	多个定义：<package name=""/> 包中pojo类自动定义别名，为类名，首字母大小写都可以
+	
+3.4 mappers
+	<mapper resource=""/>
+	<mapper file=""/>
+	<mapper class=""/> //定义接口，需要xml文件和java接口在同个包下且名字相同
+	<package name=""/> //批量加载mapper，规范和class相同
+	
+四、XML高级映射
+4.2 resultType
+	只有查询出来的列名和pojo中属性名对应才能映射成功
+	
+4.2 resultMap
+	<resultMap id="唯一标识符" type="映射出来的pojo类">
+		<!-- id：主键 -->
+		<id column="查询出来的列名" property="对应类中属性"/>
+		<result column="查询出来的列名" property="对应类中属性"/>
+	</resultMap>
+	
+	一对一查询：association，复杂关联，用于映射关联查询单个对象的信息
+		<!-- association
+			property：pojo类中对应属性名称
+			javaType：该属性类的全限定名 -->
+		<association property="user" javaType="cn.zhao.mybatis_pojo.User">
+			<id column="user_id" property="id"/>
+			<result column="username" property="username"/>
+		</association>
+		
+	一对多查询：collection，映射到集合中
+		<!-- property:集合属性名称，ofType：集合属性的pojo类型 -->
+		<collection property="orderDetail" ofType="cn.zhao.mybatis_pojo.Orderdetail">
+			<id column="orderdetail_id" property="id"/>
+			<result column="orders_id" property="ordersId"/>
+			<result column="items_id" property="itemsId"/>
+			<result column="items_num" property="itemsNum"/>
+		</collection>
+		
+	多对多查询：集合嵌套，pojo关联嵌套
+		User表关联List<Orders>订单集合，Orders表关联List<Orderdetail>订单详细集合，Orderdetail表关联item类
+		<resultMap type="user" id="">
+			<id/>
+			<result/>
+			<collection property ofType="Orders">
+				<collection property ofType="Orderdetail">
+					<association property javaType="items">
+					</association>
+				</collection>
+			</collection>
+		</resultMap>
+
+4.3 延迟加载
+	当我们查询订单信息时，因为订单关联用户，如果需要知道用户信息便查询，不需要便不查询，即延迟加载（按需加
+载）
+	框架使用方法：
+		xml映射文件：
+			在association或collection上，定义select和column
+			select：按需查询时的select语句
+			column：查询所需要的参数
+			<association property="user" javaType="cn.zhao.mybatis_pojo.User" 
+					select="cn.zhao.mybatis_dao.UserMapper.findUserById" column="user_id">
+			</association>
+		xml全局配置：
+			<setting name="lazyLoadingEnabled" value="true"/> 开启懒加载机制
+			<setting name="aggressiveLazyLoading" value="false"/> 停用积极加载，即开启按需加载
+
+	不使用框架：
+		定义两个mapper查询方法
+		先查询第一个
+		在程序中，按需调用第二个查询方法查询信息
+		
+五、动态sql
+使用类似jstl元素，按需拼接字符串，方便开发。
+5.1 if,where元素
+	#需求：按姓名和地址模糊查找user，如果条件空，则不添加该条件
+	<select id="findUserByUsernameOrAddress" parameterType="user" resultType="user">
+		select * from user
+		<where>
+		<!-- 注意，条件username，应在接口方法上加@param("username") -->
+			<if test="username != null and username != ''">
+				and username like #{username}
+			</if>
+			<if test="address != null and address != ''">
+				and address like #{address}
+			</if>
+		</where>
+	</select>
+	
+5.2 sql片段
+	使用<sql id="">，可以提高代码的可重用性
+	<sql id="query_name_address">
+		<if test="username != null and username != ''">
+			and username like #{username}
+		</if>
+		<if test="address != null and address != ''">
+			and address like #{address}
+		</if>
+	</sql>
+	引入：<include refid="">
+	<select id="findUserByUsernameOrAddress" parameterType="user" resultType="user">
+		select * from user
+		<where>
+			<include refid="query_name_address"></include>
+		</where>
+	</select>
+
+5.3 choose元素（类似java中的switch）
+	#要求：多个条件时，不想应用全部条件，而是几个里面选一个
+	<select id="findUserWithChoose" parameterType="user" resultType="user">
+		select * from user where birthday is null
+		<choose>
+			<when test="address != null and address != ''">
+				and address like '%${address}%'
+			</when>
+			<when test="username != null and username != ''">
+				and username like '%${username}%'
+			</when>
+			<otherwise>
+				and sex = 1
+			</otherwise>
+		</choose>
+	</select>
+	
+5.4 foreach元素
+	#可以将集合中的值遍历添加在条件中
+	<select id="findUserWithForeach" parameterType="user" resultType="user">
+		select * from user where id in 
+		<!-- collection：属性，item：遍历名称，open：开始时字符，separator：分隔符，close：结束时字符 -->
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+	</select>
+
+六、查询缓存
+6.1 一级缓存（根据sqlSession区分）
+	什么是一级缓存：
+		SqlSession级别的缓存，在SqlSession对象中具有HashMap，用来存放缓存数据，不同SqlSession互不影响
+	一级缓存不需要我们配置，mybatis自动就带有一级缓存。
+	缓存工作原理：
+		当查询全部订单时，第一次查询会在SqlSession的HashMap创建缓存数据对象，第二次查询直接从HashMap中读出
+		当该对象被修改，删除插入时，删除HashMap中的缓存数据，以防读取脏数据。
+		
+6.2 二级缓存（根据mapper namespace区分）
+	什么是二级缓存：
+		二级缓存是mapper级别缓存，每个mapper具有一个缓存区域，用来存放缓存数据，可以跨不同SqlSession来获取
+	其中的缓存数据
+	二级缓存工作原理：
+		SqlSession1查询数据，会先去mapper缓存区域查找，没有再到数据库查找，并将查找数据放到缓存区中
+		sqlSession2查询数据，会去mapper缓存区域查找，如果有将直接获取数据
+		SqlSession3修改数据，会清空mapper缓存区域中该数据（刷新缓存）。
+	开启二级缓存：
+		全局配置文件：<setting name="cacheEnabled" value="true"/>
+		映射文件：<cache/>
+		pojo类：implement Seriailizable，需要开启序列化
+	tips：
+		statement中设置useCache="false"可以禁用当前select语句二级缓存
+		statement配置中的flushCache="true"，默认为true，即开启刷新缓存。
+	二级缓存应用场景：
+		查询请求多但是实时性不高的查询，可以使用二级缓存，比如统计分析，话费账单查询
+		设置mybatis刷新时间，自动清空缓存flushInterval。
+	二级缓存局限性：
+		对细粒度的缓存数据实现不好，比如商品信息缓存，如果某个商品的信息改变了，根据mybatis的特性，会将
+	所有商品信息的缓存清空，即无法实现一个商品信息改变只刷新单个商品，其他商品不刷新。解决此类问题需要在
+	业务层根据需求对数据有针对性缓存。
+	

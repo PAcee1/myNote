@@ -1,0 +1,71 @@
+String类
+	字符串：多个字符组成的一串数据，像是字符数组
+	字符串是常量，不能更改，字符串缓冲区可以更改
+	字符串值不能改变，但引用可以改变。
+	
+	构造方法（常用）：
+		A:public String()
+		B:public String(byte[] bytes)//数组转字符串，注意保存的是对应的ascii码
+		C:public String(byte[] bytes,int index,int length)//从第index开始，length个
+		D:public String(char[] value)//字符数组转字符串
+		E:public String(char[] value,int index,int count)
+		F:public String(String original)//String s=new String("a");意义不大，不如G方法
+		下面的这一个虽然不是构造方法，但是结果也是一个字符串对象
+		G:String s = "hello";
+		
+	面试题：	
+	String s=new String("hello");String s="hello"; 两者区别
+		前者创建两个对象（一个在堆内存中创建String类对象，一个在方法区创建hello对象）
+		后者只创建1个对象。两者地址不同，内容相同，前者为堆中类对象地址，后者为方法区
+		字符串常量池中hello地址。
+		（字符串变量相加，先开空间再拼接）
+			String s1="helloworld";
+			String s2="hello";
+			String s3="world";
+			syso(s3==s1+s2);//false
+			syso(s3=="hello"+"world");//true
+	
+	成员方法：
+		判断功能：
+		boolean equals(Object obj);//判断字符串内容是否相同
+		boolean equalsIgnoreCase(String str);//不区分大小写判断内容
+		boolean contains(String str);//判断此字符串中是否包含str字符串内容
+		boolean startsWith(String str);//判断此字符串是否以str字符串开头
+		boolean endsWith(String str);//判断此字符串是否以str字符串结尾
+		boolean isEmpty();//判断此字符串是否为空
+		字符串为空(String s=null;)，调用isEmpty()方法会报错，因为根本没有对象无法调方法
+		字符串内容为空(String s="";)
+		
+		获取功能：(public)
+		int length()//返回字符串长度
+		int indexOf(int ch)//返回指定字符在此字符串中第一次出现的索引
+			'a'=97;
+		int indexOf(String str)//返回指定字符串在此字符串中第一次出现的索引
+		int indexOf(int ch,int fromIndex)//返回指定字符在此字符串中指定位置后第一次出现的索引
+		int indexOf(String str,int fromIndex)//返回指定字符串在此字符串中指定位置后第一次出现的索引
+		char charAt(int index)//获取指定索引位置的字符
+		String substring(int start)//从指定位置到末尾截取字符串(包含start)
+		String substring(int start,int end)//从指定位置到指定结尾截取字符串,前闭后开
+
+		转换功能
+		byte[] getBytes() //把字符串转换成字节数组
+		char[] toCharArray() //把字符串转换成字符数组
+		static String valueOf(char[] chs) //把字符数组转换成字符串
+		static String valueOf(int i) //把数据转换成字符串
+		String toLowerCase() //把字符串转换小写
+		String toUpperCase() //转换大写
+		String concat(String str) //字符串拼接
+ 
+		其他功能：
+		替换：
+			String replace(char old,char new)
+			String replace(String old,String new)
+		去除字符串两端空格：
+			String trim()
+		按字典顺序比较两个字符串
+			int compareTo(String str)
+			int compareToIgnoreCase(String str)
+			
+
+
+		

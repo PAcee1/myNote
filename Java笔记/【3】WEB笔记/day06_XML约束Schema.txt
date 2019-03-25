@@ -1,0 +1,66 @@
+Schema
+1.Schema与dtd区别
+	* schema符合xml语法语句，dtd是单独语法<!ELEMENT 元素名 约束>
+	* 一个xml中可以有多个schema，但只能有一个dtd
+	* dtd只有PCDATA类型，schema支持更多的数据类型
+	& schema语法更复杂，不能代替dtd
+	
+2.schema快速入门
+	* .xsd后缀文件
+	* 根节点<schema>
+	* <schema>中声明
+		** 属性 
+			xmlns="http://www.w3.org/2001/XMLSchema",
+				- 固定,表示为xml的约束文件
+			targetNamespace="xxx",
+				- xxx代表一个地址，用这个地址来引入约束文件
+			elementFormDefault="qualified"
+				- 固定值,代表质量良好的
+				
+	* 创建步骤
+		先把根元素写在<element>中 放在<schema>下一行
+		再看简单元素还是复杂元素
+		复杂：
+			<complexType>
+				<sequence>子元素</sequence>
+			</complexType>
+		简单：
+			<element></element>放在<sequence>中
+			
+	* 引入方式
+		<person xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns="http://www.example.org/1"
+		xsi:schemaLocation="http://www.example.org/1 1.xsd">
+		** xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			- 固定写法
+		** xmlns="http://www.example.org/1"
+			- schema中定义targetNamespace中地址
+		** xsi:schemaLocation="http://www.example.org/1 1.xsd"
+			- 写schema路径地址，targetNamespace 文件名
+			
+	* 一些其他的schema标签
+		<sequence>：表示元素的出现的顺序
+		<all>: 元素只能出现一次
+		<choice>：元素只能出现其中的一个(上面三个都是complexType子标签)
+		maxOccurs="unbounded"： 表示元素的出现的次数(放在element中)
+		<any></any>:表示任意元素(放在complexType中)
+		
+	* 约束属性
+		* 写在复杂元素里面
+		***写在　</complexType>之前
+		－－
+		<attribute name="id1" type="int" use="required"></attribute>
+			- name: 属性名称
+			- type：属性类型 int stirng
+			- use：属性是否必须出现 required
+			
+	* 复杂的schema约束
+	<company xmlns = "http://www.example.org/company"
+	xmlns:dept="http://www.example.org/department" (一个schema)
+	xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance" (另一个schema)
+	xsi:schemaLocation="http://www.example.org/company company.xsd http://www.example.org/department department.xsd" 
+	>
+	在company.xml中引入了两个schema约束
+	如果有两个相同的元素名但约束不同，就可以使用别名
+	比如员工name和部门name就可以使用<dept:name>a</dept:name>
+	这样就引入了部门的name约束

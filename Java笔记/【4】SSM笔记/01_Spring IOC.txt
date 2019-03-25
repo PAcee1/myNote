@@ -1,0 +1,299 @@
+Spring
+一、spring框架概述
+1.1 什么是spring
+	Spring是一个开源框架，轻量级的Java开发框架，为了解决企业应用开发复杂性二创建，优势为分层结构，为J2EE
+应用程序开发提供继承框架，其核心为IoC控制反转和AOP面向切面变成，简单说Spring是一个分层的轻量级开源框架。
+
+1.2 Spring好处
+	* 方便解耦，简化开发
+		Spring是一个大工厂，所有对象创建和依赖维护都可以交给Spring管理
+	* AOP编程支持
+	* 声明式事务支持
+	* 方便程序的测试
+	* 方便集成各种优秀框架(例如：Struts，Hibernate，MyBatis，SpringMVC)
+	* 降低JavaEE API使用(例如：JDBC，JavaMail)
+
+1.3 Spring体系结构
+	(3)Data Access/Integration			(4)WEB
+		JDBC(JDBCTemplate)				Web(web开发,Spring MVC)
+		ORM(整合Hibernate) 				Struts(整合Struts)
+		Transactions(事务管理Tx)
+	(2.1)AOP(切面编程)		(2.2)Aspects(AOP框架)
+	(1)Core Container(核心容器)
+		Bean(管理Bean)	Core(核心)
+		Context(配置文件)	Expression(SpEL表达式)
+	(5)Test(整合Junit)
+
+二、Spring入门
+2.1 IoC入门案例【掌握】
+IoC：使用Spring进行对象创建，即将对象创建的控制权交给Spring框架管理，即控制反转
+	* jar包：
+		四个核心：beans,core,context,expression
+		一个依赖：commons-logging
+	* 目标类：
+		UserService接口
+		UserServiceImpl实现类
+	* 配置文件：
+		位置：任意，一般在src下
+		名称：任意，一般为applicationContext.xml
+		约束：添加schema约束(spring-framework-3.2.0.RELEASE\docs\spring-framework-reference\html\ xsd-config.html)
+			<beans xmlns="http://www.springframework.org/schema/beans"
+				   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				   xsi:schemaLocation="http://www.springframework.org/schema/beans 
+									   http://www.springframework.org/schema/beans/spring-beans.xsd">
+			</beans>
+		xml中添加<bean id="" class=""></bean>
+			id:用于之后Spring容器创建对象时使用
+			class：需要创建实例的全限定类名，即包名.类名
+	* 使用IoC创建实例
+		1)获得Spring容器
+		ApplicationContext context = new ClassPathXmlApplicationContext(xmlPath);
+		2)获得内容 --创建实例
+		UserService service = (UserService)context.getBean(id);
+
+2.2 DI入门案例【掌握】
+DI：使用Spring进行依赖注入，即String创建Bean对象时，动态将依赖对象注入到Bean组件中
+	* 目标类
+		BookDao
+		BookDaoImpl
+		BookService
+		BookServiceImpl(依赖BookDao)：设置setBookDao()
+	* 配置文件
+		<bean id="bookDao" class=""></bean><!-- Dao对象实例 -->
+		<bean id="bookService" class=""><!-- Service对象实例 -->
+			<!-- 属性注入
+				 name:bean的属性值，通过set方法获得
+				 	setBookDao ##> BookDao  ##> bookDao
+				 ref：另一个bean的id值引用
+			-->
+			<property name="bookDao" ref="bookDao"></property>
+		</bean>
+
+2.3 核心API
+	BeanFactory
+		当bean对象第一次被getBean时创建实例
+	ApplicationContext：BeanFactory子接口，功能更强大
+		当配置文件加载后创建实例
+
+	ClassPathXMLApplicationContext
+		用于加载classpath下的配置文件，/WEB-INF/classes/...
+	FileSystemXmlApplicationContext
+		用于加载指定盘符下的xml，/WEB-INF/...
+
+三、装配Bean 基于XML
+3.1 实例化方式
+	3.1.2 默认构造
+		<bean id="" class=""></bean> 必须提供默认构造器
+
+	3.1.2 静态工厂
+		- 常用于与Spring整合其他框架
+		- 生成实例对象，全部方法为static
+		<bean id="实例化ID" class="静态工厂包名类名" factory-mothod="静态方法"></bean>
+		例子：
+			目标类：
+				UserService
+				UserServiceImpl
+				MyStaticFactory
+			Spring配置：
+				<bean id="userService" class="cn.zhao.spring.inject.a_staticfactory.MyStaticFactory" 
+					factory-method="createUserService"></bean>
+			创建实例：
+				String xmlPath = "cn/zhao/spring/inject/a_staticfactory/applicationContext.xml";
+				ApplicationContext context = new ClassPathXmlApplicationContext(xmlPath);
+				UserService userService = context.getBean("userService", UserService.class);
+				userService.add();
+
+	3.1.2 实例工厂
+		- 先有工厂对象，才能通过实例创建对象，所有方法必须是非静态的
+		Spring配置：
+			<!-- 创建工厂对象 -->
+			<bean id="myFactory" class="实例工厂全限定名称"></bean>
+			<!--
+				创建UserService对象
+				factory-bean:工厂id，确定工厂实例
+				factory-method：创建实例对象的方法名称
+			-->
+			<bean id="userService" factory-bean="myFactory" factory-method="createUserService"></bean>
+
+3.2 Bean种类
+	* 普通bean：<bean id="" class=""></bean>这些都是普通bean,Spring直接创建A实例并返回
+	* FactoryBean：特殊Bean，具有工厂生成对象能力，只能生成特点的对象。
+		bean必须使用FactoryBean接口，提供getObject方法用于获得实例对象。
+		例如：
+			<bean id="" class="FactoryBean"> 先创建工厂实例，调用getObject()方法，获取实例对象
+				FactoryBean fb = new FactoryBean();
+				return fb.getObject();
+		BeanFactory和FactoryBean对比
+			BeanFactory：工厂，用于生成任意bean。
+			FactoryBean：特殊bean，用于生成另一个特定的bean。AOP使用
+
+3.3 作用域
+	确定spring创建bean实例个数
+	取值：
+		singleton 单例，默认值
+		prototype 多例，没执行一次getBean将获得一个新实例。
+	spring配置：
+		<bean id="" class="" scope="">
+
+3.4 生命周期
+生命周期有11步
+比较重要的有：
+	Pre-initialization(BeanPostProcessors)- 初始化前
+	Call custom(init-method)- 初始化
+	Post-initialization(BeanPostProcessors)- 初始化后
+	Bean Is ReadyToUse|Container Is Shutdown- 目标方法
+	Call custom(destroy-method)- 销毁
+
+	3.4.1 初始化和销毁
+	目标方法执行前后执行，进行初始化或销毁
+	<bean id="" class="" init-method="" destroy-method="">
+	注意：
+		销毁方法要求
+		1.需要把ApplicationContext的实例对象关闭即close才会调用
+			但其close方法是该接口实现类独有，所以要调用close方法
+			* 使用反射
+			* 将ApplicationContext改为ClassPathXMLApplicationContext
+		2.必须是单例模式
+
+	3.4.2 BeanPostProcessor后处理Bean
+		* spring提供的一种机制，只要实现BeanPostProcessor接口，并将实现类提供给spring容器
+		  spring容器将自动执行：初始化前执行before，初始化后执行after
+			Object postProcessBeforeInitialization(Object bean,String beanName);
+			Object postProcessAfterInitialization(Object bean,String beanName);
+		* Factory hook(勾子) that allows for custom modification of new bean instances, 
+		  e.g. checking for marker interfaces or wrapping them with proxies. 
+		* spring提供工厂勾子，用于修改实例对象，可以生成代理对象，是AOP底层。
+		注意：
+			一般在after即初始化后生产代理对象并返回给实例对象，目的在目标方法前后执行(开启关闭事务)
+	问题1：后处理Bean作用某一个目标类，还是所有目标类
+		所有
+	问题2：如何设置特定的目标类
+		通过参数2beanName进行控制
+
+3.5 属性依赖注入
+* 依赖注入方式
+	手动装配：配置信息都是手动
+		基于xml：构造方法，setter方法
+		基于注解
+	自动装配：Struts和spring整合
+		byType：按类型装配 
+		byName：按名称装配
+		constructor构造装配，
+		auto： 不确定装配。
+
+	3.5.1 构造方法
+		<!-- 构造方法注入
+			name:参数名称
+			value:普通参数值
+			ref:引用数据，另一个bean 的id值
+			
+			index ：参数的索引号，从0开始 。如果只有索引，匹配到了多个构造方法时，默认使用第一个。
+			type ：确定参数类型
+			* <constructory-arg>用户配置构造方法的一个参数
+			方法一：使用名称name，缺点：有时不知道参数名称
+			方法二：使用类型type和索引index
+		 -->
+		<bean id="user" class="cn.zhao.spring.xml.a_constructor.User">
+			<!-- 方法一
+				<constructor-arg name="name" value="zhangSan"></constructor-arg>
+				<constructor-arg name="age" value="18"></constructor-arg>
+			-->
+			<!-- 方法二 -->
+			<constructor-arg index="0" type="String" value="zhangSan"></constructor-arg>
+			<constructor-arg index="1" type="Integer" value="18"></constructor-arg>
+		</bean>
+	
+	3.5.2 setter方法
+	    <!-- setter方法注入
+			* 普通数据
+				<property name="属性名" value="值"></property>
+					=
+				<property name="属性名">
+					<value>值</value>
+				</property>
+			* 引用数据
+				<property name="属性名" ref="bean的ID值"></property>
+				<property name="属性名">
+					<ref bean="bean的ID值"/>
+				</property>
+		-->
+	
+	3.5.3 P命令空间[了解]
+		对setter注入操作进行简化
+			替换<property name="" value="">
+			而是<bean id="" class="" p:属性名="普通数据" p:属性名-ref="引用ID">
+		使用前提：添加命名空间
+		<beans xmlns="http://www.springframework.org/schema/beans"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xmlns:p="http://www.springframework.org/schema/p"<!--这里注意-->
+			   xsi:schemaLocation="http://www.springframework.org/schema/beans
+								   http://www.springframework.org/schema/beans/spring-beans.xsd">
+								
+	3.5.4 SpEL[了解]
+		对<property>进行统一变成，所有内容都使用value
+		<property name="" value="#{表达式}">
+		#{123}、#{'jack'} ： 数字、字符串
+		#{beanId}：另一个bean引用	(#{custormerId})
+		#{beanId.propName}：操作数据	(#{custormerId.cname})
+		#{beanId.toString()}：执行方法		
+			(#{custormerId.cname.toUpperCase()})
+			(#{custormerId.cname?.toUpperCase()})//?:如果对象不为null，将调用方法
+		#{T(类).字段|方法}：静态方法或字段	(#T(Math).PI)
+	
+	3.5.5 集合注入
+		类成员为集合
+		String[]:<array>
+					<value></value>
+			     </array>
+		List:<list>
+				<value></value>
+			 </list>
+		Set:<set>
+				<value></value>
+			</set>
+		Map:<map>
+				<entry name="" value=""></entry>
+				<entry>
+					<key><value></value></key>
+					<value></value>
+				</entry>
+			</map>
+		Properties:<props>
+						<prop name="">值</prop>
+					</props>
+
+四、装配Bean基于注解
+	使用注解取代xml配置文件
+	1.在xml配置文件中添加命名空间
+		<beans xmlns="http://www.springframework.org/schema/beans"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xmlns:context="http://www.springframework.org/schema/context"
+			   xsi:schemaLocation="http://www.springframework.org/schema/beans
+								   http://www.springframework.org/schema/beans/spring-beans.xsd
+								   http://www.springframework.org/schema/context
+								   http://www.springframework.org/schema/context/spring-context.xsd">
+			<!-- spring扫描目录下所有注解类 -->					   
+			<context:component-scan base-package="cn.zhao.spring.annotation.b_web"></context:component-scan>
+		</beans>
+	2.使用注解
+		* @Component("id") = <bean id="" class="">
+			在类的上方声明
+		* web开发，三个 @Component衍生注解(功能相同)
+			@Controller：web层
+			@Service：Service层
+			@Repository：dao层
+		* 依赖注入，可以给成员属性，也可以给setter方法
+			普通值： @Value("")
+			引用值：
+				1)按照【类型】注入
+					@Autowired //一个接口如果有两个实现类，他就选不出来了。
+				2)按照【名称】注入
+					@Autowired
+					@Qualifier("名称") 
+					-----------------
+					@Resource("名称")
+		* 生命周期
+			初始化： @PostConstruct
+			销毁： @PreDestroy
+		* 作用域
+			@Scope("prototype");多例

@@ -1,0 +1,137 @@
+案例一：完成表单校验
+	1.获取元素内容 DOM
+		document.getElementByID("id名称")//如果id是字符串需要加引号，不是则不用
+		获取元素里的值
+		document.getElementByID("id名称").value;
+	2.javascript事件
+		表单提交事件：onsubmit
+	3.JavaScript输出：
+		警告框：alert();
+		向页面指定位置写入内容：innerHTML(属性)
+		向页面写入内容：document.write("");
+	4.步骤分析
+		* 确定事件(onsubmit)并为其绑定一个函数
+		* 书写这个函数(获取用户输入的数据<获取数据需要在指定位置定义一个ID>)
+		* 对用户输入的数据进行判断
+		* 数据合法(表单提交)
+		* 数据非法(禁止提交，提示错误信息)
+		
+案例二：简单轮播图
+	1.需要技术
+		* 事件onload
+		* DOM document.getElementByID("id");
+		* BOM setInterval("changeImg()",3000) 
+	2.步骤分析
+		* 确定事件(onload)并为其绑定一个函数
+		* 书写这个函数(设置定时调用函数setInterval("函数名"),毫秒值))
+		* 书写更换图片函数
+		* 利用循环(获取轮播图的位置，并设置src属性)
+		 
+案例三：定时弹出广告
+	1.需要技术
+		* 事件onload
+		* DOM document.getElementByID("id");
+		* BOM setInterval("changeImg()",3000) 
+		* BOM clearInterval(定时器名称)
+	2.步骤分析
+		* 确定事件(onload)并为其绑定一个函数
+		* 书写这个函数
+		* 设置定时显示器函数setInterval("函数名"),毫秒值)
+		* 书写显示图片函数
+		* 获取图片Id并将style中display设置为block
+		* 清楚定时操作
+		* 设置定时隐藏器，调用隐藏函数
+		* 书写隐藏函数
+		* 清除定时隐藏
+		
+案例四：表单校验完善
+	把表单提示放在文本框后面
+	1.需要技术
+		* 事件 onfocus聚焦事件
+		* 	   onblur离焦事件
+	2.步骤分析
+		* 确定事件onfocus并绑定一个函数(鼠标点上去有效果)
+		* 编写函数页内输出innerHTML
+		* 确定事件onblur并绑定一个函数(鼠标离开的效果)
+		* 编写函数页内输出并判断是否有数据
+	
+案例五：JS完成表格隔行换色
+	1.需要技术
+		* html 在table标签中使用<thead>和<tbody>标签
+		* 函数 获取body中行数
+			   table.tBodies[i].rows.length,//i只table中第几个tbody标签
+	2.步骤分析
+		* 确定事件onload并绑定上一个函数(页面一加载就显示)
+		* 编写函数(获取表格)
+		* 获取tbody行数
+		* 循环遍历行数
+		* 奇偶数设置背景颜色
+	
+	表格行高亮显示
+	1.需要技术
+		* 事件 onmouseover鼠标放在元素上
+		       onmouseout鼠标离开元素
+	2.步骤分析
+		* 确定事件onmouseover并绑定一个函数(鼠标放上元素)
+		* 编写函数(获取该行元素)
+		* 设置背景颜色
+		* 确定事件onmouseout并绑定一个函数(鼠标离开元素)
+		* 编写函数(获取该行元素)
+		* 设置背景颜色为原来的颜色
+		
+案例六：完成表格全选和全不选
+	1.需要技术
+		* 获取编号前面的复选框的状态(是否选中)
+			获取复选框：var checkAllEle = document.getElementById(“id”)
+			获取复选框的状态：checkAllEle.checked?
+		* 获取下面所有的复选框：
+			document.getElementsByName(“name”);
+	2.步骤分析
+		* 确定事件onclick绑定函数
+		* 获取选择框元素
+		* 判断选择框当前是否被选中
+		* 选中则用getElementsByName获取下面所有其他选择框
+		* 循环设置其他选择框被选中
+		* 如果被点击选择框未被选中
+		* 循环设置其他选择框未选中
+		
+案例七：完成省市二级联动
+	1.需要技术
+		* 事件(onchange)
+		* DOM createTextNode()
+			  createElement()
+			  appendChild()
+	2.步骤分析：
+		* 确定事件onchange并绑定一个函数
+		* 创建一个二维数组存放省和对应的市
+		* 获取用户选择的省
+		* 遍历二维数组中省找到用户选择的省
+		* 再次循环遍历对应的市
+		* 创建城市文本
+		* 创建option元素
+		* 向option元素中添加城市文本
+		* 获取第二个select元素对象
+		* 向元素中添加option
+		* 每次操作开始前清空第二个下拉列表内容
+		
+案例八：下拉列表左右选择
+	1.需要技术
+		* 事件 onclick
+		* 设置属性 multiple属性
+	2.步骤分析
+		单个或多个添加
+			1、获取select1里面的option
+				- getElementsByTagName()返回是数组
+			2、循环判断option是否被选中
+				- 属性 selected，判断是否被选中
+					** selected= true: 选中
+					** selected= false：没有选择
+			3、找到被选中的，添加到右边
+			4、得到select2，添加option[i]
+				- appendChild方法
+			5、注意 if判断中添加完应自减一次，因为option大小改变。
+			6、全部添加完循环结束	
+		全部添加
+			1、获取第一个select下面的option对象
+			2、遍历添加,直到没有
+				- 获取select2使用appendChild()添加

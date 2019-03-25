@@ -1,0 +1,74 @@
+StringBuffer
+	线程安全(同步)的可变字符串
+	与String区别:
+		前者长度内容可变，后者不可
+		前者减少空间资源使用。
+		
+	构造方法：
+		StringBuffer() 
+          容量=16 
+		StringBuffer(int capacity) 
+          容量=capacity 
+		StringBuffer(String str) 
+          容量=16+str.length() 
+	
+	成员方法：
+		public int capacity();//返回当前容量
+		public int length();//返回字符串长度
+		
+		添加功能：
+			public StringBuffer append(String str);//可以把任意类型的数据增加到字符串末端，并返回缓冲区
+			public StringBuffer insert(int index,String str);//把任意类型的数据插入到index位置后，并返回缓冲区本身
+			例：
+				StringBuffer sb = new StringBuffer();
+				sb.append("a").append(true).append(1).append(22.45);
+				sb.insert(1,"bc");
+				System.out.print(sb);//abctrue122.45
+				
+		删除功能：
+			public StringBuffer deleteCharAt(int index);//删除index位置的指定字符
+			public StringBuffer delete(int start,int end);//删除从start开始end结束范围的字符串，左开右闭原则。
+			注意：
+				StringBuffer sb = new StringBuffer(“hello”);
+				//删除e；
+				sb.deleteCharAt(1);
+				//删除o
+				sb.deleteCharAt(3);//这里是3，而不是4，因为e已经被删掉了。sb=hllo。
+				
+		替换功能：
+			public StringBuffer replace(int start,int end,String str)
+		反转功能：
+			public StringBuffer reverse();
+	
+	String和StringBuffer相互转换:
+		String --> StringBuffer
+		A:通过构造方法
+			String s=new String("a");
+			StringBuffer sb=new StringBuffer(s);
+		B:通过append方法
+			sb.append(s);
+			
+		StringBuffer --> String
+		A：通过构造
+			StringBuffer sb=new StringBuffer("b");
+			String s=new String(sb);
+		B:通过toString()方法
+			String str=sb.toString();
+			
+	面试题：
+		1.String,StringBuffer和StringBuilder的区别？
+			A:String内容不可变,StringBuffer和StringBuilder内容是可变的
+			B:StringBuffer是同步的安全的，但效率低，StringBuilder不同步但效率高，不安全。
+	
+		2.StringBuffer和数组的区别？
+			两者都是容器。
+			StringBuffer的数据最终返回的是字符串
+			一个数组中的数据类型必须是相同的
+			 数组定长，StringBuffer长度可变
+		
+		3.形式参数问题
+			String作为参数传递
+			StringBuffer作为参数传递
+			
+			String作为参数传递，效果和基本类型传递一样，形参不影响实参
+			StringBuffer如果调用append等方法会改变，但=不会改变。

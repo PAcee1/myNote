@@ -1,0 +1,22 @@
+Math(掌握)
+	(1)针对数学运算进行操作的类
+	(2)常见方法(自己补齐)
+		A:绝对值
+		  public static int abs(int a);
+		B:向上取整
+		  public static double ceil(double a);
+		C:向下取整
+		  public static double floor(double a);
+		D:两个数据中的大值
+		  public static int max(int a,int b);
+		E:a的b次幂
+		  public static double pow(double a,double b);
+		F:随机数
+		  public static double random();
+		G:四舍五入
+		  public static int round(float a);
+		H:正平方根
+		  public static double sqrt(double a);
+	(3)案例：
+		A:猜数字小游戏
+		B:获取任意范围的随机数

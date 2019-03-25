@@ -1,0 +1,116 @@
+一、引入问题
+	1.电影院卖票程序
+/*
+ * 电影院卖100张电影票，一共3个窗口同时卖票。
+ */
+public class MyRunnable implements Runnable{
+	private int tickets=100;
+	
+	public void run() {
+		while(true) {
+			if(tickets>0) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				System.out.println(Thread.currentThread().getName()
+				+"出售第："+tickets--+"张票");			
+			}else {
+				break;
+			}
+		}
+	}
+}
+
+public class SellTicketDemo {
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		MyRunnable my = new MyRunnable();
+		Thread th1 = new Thread(my);
+		Thread th2 = new Thread(my);
+		Thread th3 = new Thread(my);
+		
+		th1.setName("窗口1");
+		th2.setName("窗口2");
+		th3.setName("窗口3");
+		
+		th1.start();
+		th2.start();
+		th3.start();
+	}
+}
+
+
+	2.电影院卖票程序出问题
+		A:为了更符合真实的场景，加入了休眠100毫秒。
+		B:运行代码后会发现问题
+			a:同票多次
+				原因：CPU一次操作的原子性，
+				例如：卖第100张票，当票还在卖，没有减去1张时，另一个线程
+				进来了，它看到的票数还是原来的100，这就会出现同票问题。
+			b:负数票
+				原因：随机性和延迟
+				例如：当票还剩一张时，三个线程都进来了，只不过正在休息sleep();
+				当第一个线程卖出去后，就剩0张，后两个线程就会显示卖出0和-1张票。
+	
+	3.多线程安全问题的原因(也是我们以后判断一个程序是否有线程安全问题的依据)
+		A:是否有多线程环境
+		B:是否有共享数据
+		C:是否有多条语句操作共享数据	
+
+	4.解决问题：
+		由上面可见，多线程出现问题的三种原因全部满足。
+		A和B问题改变不了，那就只能想办法把C改变一下。
+		思想：
+			把多条语句操作共享数据的代码包成一个整体，让某个线程正在执行的
+		时候，别的线程不能来执行。(就像有一个房间，一个人进去把门锁了，别人
+		就不能进来，除非那个人出来别人才能抢进去的机会。)
+		
+		如何包住代码呢？使用Java提供的同步机制。
+	
+二、同步代码块
+	synchornized(对象){
+		需要同步的代码;
+	}
+	
+	A:对象是什么？
+		可以随便创建一个对象例如Object obj；
+	B:需要同步的代码是什么？
+		多条语句操作共享数据的那部分代码
+	注意：
+		同步可以解决安全问题的根本原因就在那个对象上面。该对象如同锁的功能。
+
+三、同步的特点及利弊
+	特点：多个线程
+		  多个线程使用同一个锁对象
+	好处：解决多线程安全问题
+	弊端：当线程很多时，因为每个线程都会去判断同步锁，耗费资源，效率低。
+		  容易产生死锁问题
+		  例如：StringBuffer,Vector,Hashtable
+四、同步方法
+	格式：把同步关键字加在方法上
+	public void run() {
+		while(true) {
+			sellTikets();
+		}
+	}
+	private synchronized void sellTikets() {
+		// TODO Auto-generated method stub
+			if(tickets>0) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				System.out.println(Thread.currentThread().getName()+"出售："+tickets--);				
+		}
+	}	
+	锁对象是this
+	
+	同步方法可以静态修饰
+	静态方法的锁对象是：类的字节码文件对象。
+		synchronized(MyRunnable.class);

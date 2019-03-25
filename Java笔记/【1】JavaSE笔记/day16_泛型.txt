@@ -1,0 +1,63 @@
+泛型
+	(1)概念；
+		是一种把类型明确的工作推迟到创建对象或调用方法的时候才去明确的特殊类型，把类型
+	当做参数传递。
+	
+	(2)格式：
+		<数据类型>
+		此处的数据类型只能是引用类型
+		
+	(3)好处：
+		把运行时的问题提前到编译时期
+		避免了强制类型转换问题
+		优化程序设计，解决eclipse中黄色警告
+	
+	(4)泛型拓展
+		A:泛型类
+			class ObjectTool<>{
+			}
+			ObjectTool<String> ot=new ObjectTool<String>;
+			造对象时固定数据类型，泛型类型必须是引用类型
+			
+		B:泛型方法
+			public <T> void show(T t){
+				System.out.printlt(t);
+			}
+			泛型定义在方法上，接收任意类型
+			
+		C:泛型接口
+			泛型定义在接口上
+			public interface If<>{
+				public abstract void show();
+			}
+			知道什么类型
+			class ObjectTool implements If<String>{}
+			不知道什么类型 //常用
+			class ObjectTool<T> implements If<T>{}
+			
+			If<String> if=new ObjectTool;
+			
+		D:泛型高级通配符
+			?
+			Collection<?> c1=new ArrayList<Animal>();
+			Collection<?> c1=new ArrayList<Dog>();//Animal子类
+			Collection<?> c1=new ArrayList<Cat>();//Animal子类
+			Collection<?> c1=new ArrayList<Object>();//Animal父类
+			
+			? extends E //向下限定，E及其子类
+			Collection<? extends E> c1=new ArrayList<Animal>();
+			Collection<? extends E> c1=new ArrayList<Cat>();
+			Collection<? extends E> c1=new ArrayList<Dog>();
+			//Collection<?extends E> c1=new ArrayList<Object>();//报错
+			
+			? super E	//向上限定，E及其父类
+			Collection<?> c1=new ArrayList<Animal>();
+			Collection<?> c1=new ArrayList<Dog>();//报错
+			Collection<?> c1=new ArrayList<Cat>();//报错
+			Collection<?> c1=new ArrayList<Object>();
+			
+			
+			
+			
+			
+			

@@ -1,0 +1,33 @@
+BigInteger(理解)
+	(1)针对大整数的运算 超过21亿4千万
+	(2)构造方法	
+		A:BigInteger(String s)
+	(3)成员方法(自己补齐)
+		A:加
+		public BigInteger add(BigInteger val);
+		B:减
+		public BigInteger subtract(BigInteger val);
+		C:乘
+		public BigInteger multiply(BigInteger val);
+		D:除
+		public BigInteger divide(BigInteger val);
+		E:商和余数
+		public BigInteger[] divideAndRemainder(BigInteger val);
+		
+BigDecimal(理解)
+	(1)浮点数据做运算，会丢失精度。所以，针对浮点数据的操作建议采用BigDecimal。(金融相关的项目)
+	(2)构造方法
+		A:BigDecimal(String s)
+	(3)成员方法：
+		A:加
+		public BigDecimal add(BigDecimal augend);
+		B:减
+		public BigDecimal subtract(BigDecimal augend);
+		C:乘
+		public BigDecimal multiply(BigDecimal augend);
+		D:除
+		public BigDecimal divide(BigDecimal augend);
+		E:自己保留小数几位		
+		public BigDecimal divide(BigDecimal augend,int scale,introundingMode);
+		bd.divide(bd1,3,BigDecimal.ROUND_HALF_UP);
+						舍去规则，四舍五入

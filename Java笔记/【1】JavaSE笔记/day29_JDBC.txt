@@ -1,0 +1,51 @@
+1.JDBC java连接数据库
+	JDBC其实是一种用于执行SQL语句API，可以为多种关系数据库提供统一访问，
+它由一组用Java语言编写的类和接口组成。是Java访问数据库的标准规范。而实现类
+是又mysql开发商实现的，不需要我们自己编写。
+	简单说：就是一套API，Sun公司定义类或者是接口，实现类由各个数据库公司
+实现，我们需要学习的就是使用这些接口，而不是不同的驱动实现类。
+	
+2.JDBC开发步骤
+	1.注册驱动,使用com.mysql.jdbc.Driver类反射
+	2.获得数据库连接,DriverManager&Connection (getConnection)
+	3.获得语句执行对象,Connection&Statement (createStatement)
+	4.执行sql语句,Statement中方法
+		insert,update,delete:int executeUpdate(String sql)
+			返回执行了int条语句
+		select：ResultSet executeQuery(String sql)
+	5.处理结果,只有select查询语句才需要处理结果
+		ResultSet类中方法：
+			boolean next()判断这行是否有数据
+			T getXXX(String columnLabel)返回这一列的数据
+				可以都使用getString或getObject。
+	6.释放资源,各种close()
+	
+3.PreparedStatement 预处理对象
+	Statement中name或password需要用连接符连接，这样就会有注入攻击的危险。
+	PreparedStatement中name或password使用？连接，大大减少危险。
+		并且这个子接口，可以预存储SQL语句，高效多次执行SQL，不用每次使用，
+		便new一个Statement对象。
+		
+4.自己建一个JDBCUtils工具类
+	把注册驱动，获得连接这些步骤的代码封装起来，更方便使用。
+	并且可以写一个释放资源的功能，全部一起释放。
+	
+5.Properties配置文件
+	在开发中，如果把数据库信息写在类中，调整会很麻烦，要找到工具类，编写，
+再重新生成class文件，如果把这些数据放在一个类似文本文件中，每次修改是不是
+比较简单了呢？
+	其实开发中获得连接的4个参数（驱动、URL、用户名、密码）通常都存在配置文
+件中，方便后期维护，程序如果需要更换数据库，只需要修改配置文件即可。
+
+	通常情况下，我们习惯使用.properties文件，此文件我们将做如下要求：
+	1.	文件位置：任意，建议src下
+	2.	文件名称：任意，扩展名为properties
+	3.	文件内容：一行一组数据，格式是“key=value”.
+
+	实现步骤：
+	1.使用类加载器实现properties文件的加载，用InputStream接收
+		InputStream in = JDBCUtilsConfig.class.getClassLoader()
+						.getResourceAsStream("db.properties");	
+	2.使用Properties类来读取in这个输入流
+	3.使用Properties类中的getProperty(String value)方法获取驱动,url等。
+	

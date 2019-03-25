@@ -1,0 +1,98 @@
+集合
+	(1)特点：
+		长度可变，只能存放对象，可以存放不同类型的对象
+	
+	(2)集合和数组的区别
+		长度：
+			数组长度不能变，集合可以改变
+		存放类型：
+			数组只能存相同类型的数据，集合可以存不同类型的对象
+		内容：
+			数组可以存基本类型，也可以存放引用类型
+			集合只能存储引用类型
+			
+Collection
+	(3)集合体系结构：
+		Collection
+			|--List 有序(指存入顺序和输出顺序一致)，可重复
+				|--ArrayList
+					底层数据结构是数组，查询快，增删慢
+					线程不安全，效率高
+				|--Vector
+					底层数据结构是数组，查询快，增删慢
+					线程安全，效率低
+				|--LinkedList
+					底层数据结构是链表，查询慢，增删快
+					线程不安全，效率高
+			|--Set 
+				|--HashSet
+					底层是哈希表，唯一不可重复，无序
+				|--TreeSet (自动排序)
+					底层数据结构是二叉树，唯一有序
+					自然排序
+						元素类实现Comparaable，重写compareTo()方法
+					比较器排序
+						写一个子类对象实现Comparator，重写compare()方法；
+					
+		
+	（4）Collection功能
+		A:添加功能
+			public boolean add(Object obj);
+			public boolean addAll(Collection c);
+		B:删除功能
+			public void clear();//全部清除
+			public boolean remove(Object obj);
+			public boolean removeAll(Collection c);//只要有元素被移除就返回true
+		C:判断功能
+			public boolean contains(Object obj);
+			public boolean containsAll(Collection c);//只有包含全部元素才返回true
+			public boolean isEmpty();
+		D:获取功能
+			Iterator<E> iterator()
+		E:长度功能
+			public int size();
+		F:交集(了解)
+			public boolean retainAll(Collection c);
+			//A对B做交集，两者相交的数据保存在A中，B不变
+			//只有数组发生改变才会返回true，空集true，B是A的全集false
+		G:把集合转数组(了解)
+			Object[] toArray()
+		
+	(5)Collection集合的遍历
+		A:把集合转数组(了解)
+			Collection c=new ArrayList();
+			Object[] obj=c.toArray();		
+			for(int i=0;i<obj.length;i++) {
+				//System.out.println(obj[i]);//重写toString()方法
+				
+				Student s=(Student)obj[i];
+				System.out.println(s.getName()+"---"+s.getAge());
+			}
+		
+		B:迭代器(集合专用方式)	
+				Iterator it=c.iterator();
+				//while循环
+				while(it.hasNext()) {
+					//System.out.println(it.next());//重写toString()方法
+					
+					Student s=(Student)it.next();
+					System.out.println(s.getName()+"--"+s.getAge());
+				}
+			
+				//for循环，效率高，用完资源就被回收
+				for(Iterator it=c.iterator();it.hasNext();){
+					//System.out.println(it.next());//重写toString()方法					
+					Student s=(Student)it.next();
+					System.out.println(s.getName()+"--"+s.getAge());
+				}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		

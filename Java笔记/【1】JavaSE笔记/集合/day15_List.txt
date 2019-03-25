@@ -1,0 +1,56 @@
+List
+	有序且可重复的集合
+	
+	List的特有功能：
+		A:添加功能
+			//public void add(int index,Object obj);
+		B:删除功能
+			// Object remove(int index);
+		C:获取功能
+			//	Object get(int index);
+		D:迭代器功能
+			// ListIterator listIterator();
+		E:修改功能
+			// Object set(int index,Object obj);
+			
+	List集合特有遍历方法：
+		//使用size()方法和get()方法结合
+		List list = new ArrayList();
+		for(int i=0;i<list.size();i++){
+			System.out.println(list.get(i));
+		}
+		
+	列表迭代器(ListIterator)的特有功能；(了解)
+		Object previous();获取上一个元素
+		boolean hasPrevious();判断是否有上一个元素
+		逆向遍历时，要先正向遍历，不然指针指在第一个无意义，基本不使用。
+
+		ListIterator lsit=list.listIterator();
+		while(lsit.hasNext()) {
+			System.out.println(lsit.next());			
+		}
+		while(lsit.hasPrevious()) {
+			System.out.println(lsit.previous());			
+		}
+		
+	并发修改异常
+		A:出现的现象
+			迭代器遍历集合，集合修改集合元素
+		B:原因
+			迭代器是依赖于集合的，而集合的改变迭代器并不知道。
+		C:解决方案
+			a:迭代器遍历，迭代器修改(ListIterator)
+				元素添加在刚才迭代的位置
+			b:集合遍历，集合修改(size()和get())
+				元素添加在集合的末尾	
+				
+	List子类：
+		ArrayList:
+			底层数据结构是数组，查询快，增删慢
+			线程不安全，效率高
+		Vector:
+			底层数据结构是数组，查询快，增删慢
+			线程安全，效率低
+		LinkedList:
+			底层数据结构是链表，查询慢，增删快
+			线程不安全，效率高

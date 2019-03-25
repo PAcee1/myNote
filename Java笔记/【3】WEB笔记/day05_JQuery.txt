@@ -1,0 +1,21 @@
+jQuery
+	jQuery是一个JavaScript函数库,相当于JavaScript的一个小框架
+	
+jQuery 的功能概括
+	1、html 的元素选取
+	2、html的元素操作
+	3、html dom遍历和修改
+	4、js特效和动画效果
+	5、css操作
+	6、html事件操作
+	7、ajax异步请求方式
+	
+jQuery入门：
+	* 导入jquery包
+		<script src="包位置"></script>
+	* JQ页面加载和JS页面加载区别：
+		js传统页面加载(onload)会存在覆盖问题
+		JQ不存在覆盖问题
+		JQ的加载速度比JS快
+			- 因为JQ当整个dom树结构绘制完成就加载，而js是整个页面加载完成才加载
+		

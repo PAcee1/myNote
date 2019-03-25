@@ -1,0 +1,50 @@
+JavaMail
+一、邮件协议
+1.1 收发邮件
+	发邮件是从客户端把邮件发送到邮件服务器，
+	收邮件是把邮件服务器的邮件下载到客户端。
+1.2 邮件协议概述
+	SMTP：简单邮件传输协议，发邮件的协议；端口号25，服务器名smtp.qq.com
+	POP3：邮局协议第三版，收邮件的协议;端口号110,服务器名pop3.qq.com
+	IMAP：因特网消息访问协议，收发协议
+
+二、使用Java发邮件
+2.1 导包
+	mail.jar/activation.jar
+2.2 核心类
+	1)Session
+	* 得到Session，说明与服务器连接成功，类似JDBC的connection
+		- 得到Session需要使用Session.getInstance(Properties,Authenticator);
+		- Properties
+			** Properties props = new Properties();
+			** props.setProperty("mail.host","smtp.qq.com");//设置服务器主机名
+			** props.setProperty("mail.smtp.auth", "true");//设置是否需要认证
+			** props.put("mail.smtp.port", "587");//设置端口
+			注意：qq邮箱端口号为465或587，我只能使用587
+				  qq邮箱需要设置打开smtp和pop3协议
+		- Authenticator 接口，表示认证器，需要我们邮箱的用户名密码
+			Authenticator auth = new Authenticator() {
+				public PasswordAuthentication getPasswordAuthentication () {
+					//用户名和密码
+					new PasswordAuthentication("8709867@qq.com", "这里的密码应该为qq邮箱授权码");
+				}
+			};
+		- Session session = Session.getInstance(prop, auth);
+	2)MimeMessage
+	* 表示邮件对象，设置发件人，收件人，主体，正文
+		MimeMessage msg = new MimeMessage(session);
+		msg.setFrom(new InternetAddress("8709867@qq.com"));//设置发件人
+		msg.setRecipients(RecipientType.TO, "330160228@qq.com");//设置接收人
+		msg.setSubject("JavaMail测试");//设置主题
+		msg.setContent("测试~","text/html;charset=utf-8");//设置正文
+	* 发送附件
+		- 使用MimeMultipart，相当于集合，多部件内容，一个MimeMessage只能添加一个
+		- 创建MimeBodypart，多部件内容的主体，可以创建多个
+		- part1.setContent();可以设置文本内容
+		- part2.attachFile(file);添加附件
+		- part2.setFileName(String)；设置附件的名称
+		- mimemulti.add(part1);
+		- mimemulti.add(part2);//添加主体
+		- msg.setContent(mimemulti);//最后添加多部件内容
+	3)TransPort
+	* 发邮件 Transport.send(msg);

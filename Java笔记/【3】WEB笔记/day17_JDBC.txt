@@ -1,0 +1,148 @@
+一、JDBC
+1.1	Java数据库连接
+	四步：
+	* 1)导mysql的jar包
+	* 2)加载驱动 Class.forName("")
+	* 3)给出url,username,password
+	* 4)获取连接 Connection & DriverManger
+1.2 使用Statement实现增删改查
+	Statement类似一个SQL语句发送器，把sql语句发送给mysql执行
+	Statement stmt = conn.createStatement();
+	* 增删改：stmt.executeUpdate(String url);//返回int值，为执行成功语句数
+			//如果SQL语句执行失败，那么executeUpdate()会抛出一个SQLException
+	* 查询：stmt.executeQuery(String url);//返回ResultSet结果集
+			注意：url中的参数用+号连接。
+1.3 规范式代码
+	因为Connection,Statement,ResultSet三个释放资源有可能会因为异常而没有close
+	所以应在finally里close();
+	* Connection,Statement,ResultSet在外部创建null
+	* try-catch中赋值连接
+	* finally中释放资源
+
+二、ResultSet结果集
+2.1 是一个二维表格，内部有一个行光标，ResultSet有一系列方法来移动光标
+	- 光标摆放
+		* void beforeFirst()：把光标放到第一行的前面，这也是光标默认的位置；
+		* void afterLast()：把光标放到最后一行的后面；
+		* boolean first()：把光标放到第一行的位置上，返回值表示调控光标是否成功；
+		* boolean last()：把光标放到最后一行的位置上；
+	- 光标位置判断
+		* boolean isBeforeFirst()：当前光标位置是否在第一行前面；
+		* boolean isAfterLast()：当前光标位置是否在最后一行的后面；
+		* boolean isFirst()：当前光标位置是否在第一行上；
+		* boolean isLast()：当前光标位置是否在最后一行上；
+	- 光标移动
+		* boolean next();光标下移 //所有数据库通用
+		----------- 下面只有可滚动结果集可以使用 -----------
+		* boolean previous():光标上移
+		* boolean relative(int row)：相对位移，row为正数表示向下移动row行，为负数表示向上移动row行；
+		* boolean absolute(int row)：绝对位移，把光标移动到指定的行上；
+	- 光标位置获取
+		* int getRow();返回光标所在位置
+	注意：mysql所有都可以使用不管设置没设置
+2.2 获取列数据
+	Xxx getXxx(int columnIndex)：获取指定列的Xxx类型的数据。
+	Xxx getXxx(String columnName)：获取名称为columnName列的Xxx类型数据
+2.3 获取结果集元数据！
+	* 得到元数据：rs.getMetaData()，返回值为ResultSetMetaData；
+	* 获取结果集列数：int getColumnCount()
+	* 获取指定列的列名：String getColumnName(int colIndex)
+2.4 结果集特性
+	* 是否可滚动：不可滚动只能使用next()和光标位置判断
+	* 是否敏感： 数据库改变，结果集也会改变
+	* 是否可更新：结果集修改，数据库也会修改
+	- 特性是由Connection的createStatement改变的
+		** con.createStatement() //默认为不滚动，不更新，不敏感
+		** con.createStatement(int,int)
+			-- 第一个参数
+				ResultSet.TYPE_FORWARD_ONLY：不滚动结果集；
+				ResultSet.TYPE_SCROLL_INSENSITIVE：滚动结果集，但不敏感
+			-- 第二个参数
+				CONCUR_READ_ONLY：结果集是只读的，不可更新
+				CONCUR_UPDATABLE：结果集是可更新的，对结果集的更新可以反向影响数据库。
+
+三、PreparedStatement
+3.1 简介
+	是Statement子接口，更加好用，具有预编译功能
+	优点：
+		* 防范SQL注入攻击
+		* 效率高
+		* 提高代码可读性可维护性
+	获得方式：
+		* PreparedStatement pstmt = conn.prepareStatement(String sql)
+	sql语句模板：
+		* Select * from user where username=? and password=?
+	使用方法：
+		* 使用pstmt.setXxx(1,str)为第一个？参数赋值
+		* 使用pstmt.executeUpdate()或pstmt.executeQuery()实现增删改查
+3.2 与Statement区别
+	1)SQL语句模板不同
+	2)pstmt再获取实例是传递sql语句，stmt在调用增删改查方法是传递sql语句
+3.3 预编译
+	服务器的工作：
+		* 检查sql语句语法问题
+		* 编译sql，类似函数
+		* 执行，调用函数传递参数
+	PreparedStatement：
+		* 需要数据库支持预处理
+		* 每个pstmt都与sql模板绑定，先给模板到数据库，数据库校验编译，执行时传参
+		* 第二次执行时不需要校验编译，直接执行，效率更高
+	注意：预编译功能所有数据库都是默认关闭的
+		  打开：jdbc:mysql://localhost:3306/test?useServerPrepStmts=true
+		  使用缓存jdbc:mysql://localhost:3306/test?useServerPrepStmts=true&cachePrepStmts=true
+	
+四、JDBCUtils
+v1.0
+	工具类，因为获取连接的方式单一化，所有可以做一个工具类来获取连接
+	创建一个.properties文件保存驱动地址，url，用户名和密码，在类中读取，需要更改只需在文件中修改
+v2.0
+	使用c3p0连接池获取连接
+	使用默认配置参数，需要有c3p0-config.xml文件，里面配置相关四大项和池配置信息
+	注意：获取的连接对象不是新的对象，而是别人用完还回的二手对象
+
+五、Dao模式
+	一个类作用是数据库操作，运用在数据库和业务逻辑层之间
+	一般由Dao接口，Dao实现类，Dao工厂类组成
+	修改WEB14项目：
+		1.把UserDao修改为接口，然后把原来的UserDao修改类名为UserDaoImpl
+		2.修改UserService中对UserDao的实例化：private UserDao userDao = DaoFactory.getUserDao()
+		3.创建DaoFactory，提供getUserDao()
+
+六、时间类型
+	Java中的Date-java.util.Date
+	数据库中的Date-java.sql.Date
+	在实际项目中，domin包下不能存在sql包下的元素，所以，Date类型转换是一个问题。
+	解决方法
+		1)java.util.Date-->java.sql.Date
+			把util下的Date转为毫秒值
+			使用构造方法传毫秒值创建sql下Date
+		2)java.util.Date<--java.sql.Date
+			sql是util子类，不需要处理
+	
+七、大数据和批处理
+7.1 大数据
+	* 比较大的字节数据或字符数据，比如存储音频到数据库中
+		数据库：创表时使用mediumblob(16mb)或longblob(4gb)这种比较大的数据类型
+		Java：Statement和他的子类具有setBlob(int,Blob)
+			File file = new File("f:\\test.mp4");
+			byte[] datas = FileUtils.getBytes(file);//获取文件中的数据
+			Blob blob = new SerialBlob(datas);//创建Blob对象
+			pstmt.setBlob(2, blob);//设置Blob类型的参数
+	* 从数据库取出音频
+		if(rs.next()){
+			Blob b = rs.getBlob("bdate");//从结果集取出Bolb对象
+			InputStream is = b.getBinaryStream();//调用bolb方法获取InputStream流对象
+			OutputStream os = new FileOutputStream("E:/a.avi");
+			IOUtils.copy(is, os);//拷贝音频
+		}
+	注意：要在my.ini中添加max_allowed_packet=10485760配置防止过大抛出异常
+			com.mysql.jdbc.PacketTooBigException
+7.2 批处理
+	一次性执行多条语句而不是一条条执行，只适用于增删改，查询不可以
+	Statement和他的子类具有方法：
+		* addBatch()
+		* executeBatch()
+		* clearBatch()
+	注意：批执行后，里面的sql语句会被清空
+		  url后添加rewriteBatchedStatements=true打开批处理
+

@@ -1,0 +1,116 @@
+Customer 客户管理系统
+Custormer框架页面
+	- frame.jsp	框架页面
+		上面top.jsp固定
+		下面默认为welcome.jsp，根据top.jsp的三个超链接变更main页面，即下方页面
+	- add.jsp	//添加页面，里面显示表单
+	- msg.jsp //信息页面，展示成果信息，例如：恭喜，注册成功
+	- list.jsp //遍历页面，将数据库读出的List集合循环添加到html表格标签
+	- edit.jsp //编辑页面，将客户信息展示到页面，然后用户修改数据
+	- query.jsp  //查询页面，性别查询，姓名查询，电话查询，邮箱查询
+
+java代码的架构
+cn.zhao.domain
+	Custormer类，Bean类和数据库数据相应
+cn.zhao.dao
+	CustormerDao，数据库相关操作
+cn.zhao.service
+	CustormerService，业务逻辑层，在本项目中，就是连接Servlet层和Dao层，无业务实现
+cn.zhao.web.servlet
+	CustormerServlet，Servlet层
+
+功能：
+添加用户：
+	客户点击top.jsp中add超链接，转到add.jsp
+	add.jsp
+		* 表单提交位置action="<c:url value='/CustormerServlet'/>"
+		* 使用的BaseServlet，所以应该传参method=add，但是post不能传参
+		* 需要一个隐藏参数，<input type="hidden" name="method" value="add"/>
+	CustormerServlet
+		* 接收add页面中的表单数据，封装到Custormer类中
+		* 创建uuid封装到类对象setCid(uuid)
+		* 调用service的add方法传入Custormer类对象
+		* request域存储正确信息
+		* 转发到msg.jsp
+	CustormerService，调用dao层的add方法
+	CustormerDao
+		素质三连：sql模板，object参数，调用
+		
+查询用户(全部)：
+	客户点击top.jsp中的，转到CustormerServlet?method=findAll
+	CustormerServlet
+		* 调用service的findAll方法获取所有客户的List集合
+		* request域存储list集合
+		* 转发到list.jsp
+	CustormerService，调用dao层的findAll方法
+	CustormerDao
+		素质三连：sql模板，object参数，调用
+	list.jsp
+		* 在<table>标签下，使用JSTL<c:forEach>jsp标签循环显示每个客户
+		* 使用EL表达式，获取request域中cstnList集合
+		* 在相应的位置使用El表达式，输出集合中的cname,gender等信息
+
+编辑用户：
+	在list.jsp中有两个超链接，一个为编辑
+	需要传递method=preEdit和cid	— href="<c:url value='/CustormerServlet?method=preEdit&cid=${cstn.cid}'
+	两个功能需要实现：
+	- 一个在edit.jsp中需要实现数据库信息展现到表单中
+		CustormerServlet 根据cid获取用户信息
+			* 调用service层load方法，传入cid，获取Custormer对象
+			* request域存储Custormer对象
+			* 转发到edit.jsp
+		CustormerService，调用load层的add方法
+		CustormerDao
+			素质三连：sql模板，object参数，调用
+		edit.jsp
+			在表单中使用el表达式加入默认值
+			例如：value="${cstn.cname}",cstn为域中存储的键名称
+
+	- 一个在edit.jsp上修改数据，存储数据库
+		eidt.jsp
+			<form action="<c:url value='/CustormerServlet'/>" method="post">
+				<input type="hidden" name="method" value="edit"/>
+				<input type="hidden" name="cid" value="${cstn.cid }">
+		CustormerServlet
+			 * 封装表单数据到Customer中,cid在对象中
+			 * 调用Service层edit方法，传入customer
+			 * request域存储正确信息
+			 * 转发到msg.jsp
+		CustormerService，调用load层的edit方法
+		CustormerDao
+			素质三连：sql模板，object参数，调用
+
+删除客户：
+	在list.jsp中的删除超链接
+	<a href="<c:url value='/CustormerServlet?method=delete&cid=${cstn.cid}'/>">删除</a>
+	CustormerServlet
+		* 调用service层delete方法，传入cid，删除对应的Custormer对象
+		* request域存储正确删除信息
+		* 转发到msg.jsp
+	CustormerService，调用load层的delete方法
+	CustormerDao
+		素质三连：sql模板，object参数，调用
+
+高级搜索：
+	top.jsp中的query超链接，点击转到query.jsp
+	query.jsp
+		表单有四个属性，cname,gender,birthday,email
+		表单传递给CustormerServlet，隐藏参数method=query
+	CustormerServlet
+		* 调用service层的query方法，获取返回的List集合对象
+		* 将List集合存入request域中
+		* 转发到list.jsp中遍历输出
+	CustormerService，调用load层的delete方法
+	CustormerDao
+		因为表单不要求每个都填，所以sql查询比较麻烦
+		具体实现：
+		* 创建StringBuilder字符串，设置初始化"select * from t_customer where 1=1"//1=1，是为了后面添加and
+		* 创建ArrayList<Object>集合存储参数
+		* 判断cname中是否有值，如果有则append("and cname=?");且向集合添加cname值
+		* 以此类推，判断gender,birthday,email
+		* 调用query方法，注意，StringBuilder需要使用toString()转为String字符串，集合需要toArray()转成数组
+
+	
+
+
+

@@ -1,0 +1,24 @@
+Scanner类
+	构造方法一般用：
+		public Scanner(InputStream source) ;它生成的值是从指定的输入流扫描的
+		
+	成员方法：
+		public boolean hasNextXXX();判断是否是这种类型的元素		
+		public XXX nextXXX();获取该元素
+		例：
+			Scanner sc=new Scanner(System.in);
+			if(sc.hasNextInt()){
+				int i=sc.nextInt();
+				syso(i);
+			}else{
+				syso("输入有误");
+			}
+		
+		public String nextLine();
+		
+		小问题：
+			先获取一个数值，再获取字符串的时候会出现问题。
+			因为回车被读入了
+		解决方法：
+			A；建立两个输入对象
+			B：全部用字符串获取，之后再int类型转换
