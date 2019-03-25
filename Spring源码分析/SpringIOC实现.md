@@ -1,6 +1,6 @@
 ## 一、IOC的实现
 
-### 1.1 BeanFactory的生命流程	
+### 1.1 BeanFactory的生命流程
 
 1. `BeanFactory`加载配置文件，将读取到的Bean配置到`BeanDefintion`对象
 2. 将`BeanDefintion`对象注册到`BeanDefintion`容器中（Map）
