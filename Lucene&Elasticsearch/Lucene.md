@@ -36,7 +36,7 @@
 
 ## 二、Lucene实现流程
 
-![1570502426948](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570502426948.png)
+![1570502426948](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570502426948.png)
 
 Lucene主要分为创建索引和查询索引两大过程
 
@@ -48,7 +48,7 @@ Lucene主要分为创建索引和查询索引两大过程
 
 #### 2.1.2.构建文档对象
 
-![1570502884665](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570502884665.png)
+![1570502884665](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570502884665.png)
 
 每个原始文档创建一个Document对象，该对象有多个域（类似数据库字段），存放文档信息的映射关系。
 
@@ -60,11 +60,11 @@ Lucene主要分为创建索引和查询索引两大过程
 
 #### 2.1.4.创建索引
 
-![1570503201643](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570503201643.png)
+![1570503201643](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570503201643.png)
 
 创建一个索引库，索引库中包含：**索引，document，索引与document对应关系**。
 
-![1570503216828](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570503216828.png)
+![1570503216828](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570503216828.png)
 
 一般情况下都是先选择 文档，再在文档里查询关键词，而这种是先找索引再根据映射关系找文档，即**倒排索引结构**。
 
