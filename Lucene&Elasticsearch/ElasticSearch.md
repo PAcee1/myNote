@@ -100,13 +100,13 @@ http.cors.allow‐origin: "*"
 
 1）只创建索引
 
-![1570605268369](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570605268369.png)
+![1570605268369](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570605268369.png)
 
 这里我们在请求参数json中没有添加任何数据，即创建一个空的索引test
 
 2）创建索引与mappings
 
-![1570605138300](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570605138300.png)
+![1570605138300](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570605138300.png)
 
 这次我们在请求体中添加了mappings，下一层的article是type类型，即数据库中的表名，在下一层properties又包含了字段类型，type为长整型long或text文本，store表示是否存储，index是否建立索引，analyzer使用哪种解析器。
 
@@ -114,19 +114,19 @@ http.cors.allow‐origin: "*"
 
 当然我们创建空的没有结构索引后，也可以后期为其添加结构映射mappings
 
-![1570605361068](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570605361068.png)
+![1570605361068](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570605361068.png)
 
 URL为`IP:端口/索引名/类型/_mappings`，请求体中就是其字段类型
 
 ### 4.3.删除索引
 
-![1570605903840](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570605903840.png)
+![1570605903840](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570605903840.png)
 
 因为是RESTful风格，所以DELETE请求即可
 
 ### 4.4.创建Document
 
-![1570606810590](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570606810590.png)
+![1570606810590](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570606810590.png)
 
 创建document时，URL为`IP:端口/索引名/类型/文档主键ID`，请求体为设置的mapping映射字段。
 
@@ -134,13 +134,13 @@ URL为`IP:端口/索引名/类型/_mappings`，请求体中就是其字段类型
 
 ### 4.5.删除Document
 
-![1570607233171](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570607233171.png)
+![1570607233171](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570607233171.png)
 
 URL：`IP:端口/索引名/类型/主键ID`，注意这里的ID是主键ID而不是字段ID
 
 ### 4.6.修改Document
 
-![1570607442608](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570607442608.png)
+![1570607442608](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570607442608.png)
 
 URL：`IP:端口/索引名/类型/主键ID`，请求体为文档内容。这里ES基于Lucene，所以底层也是先删除再新增的操作。
 
@@ -150,7 +150,7 @@ URL：`IP:端口/索引名/类型/主键ID`，请求体为文档内容。这里E
 
 #### 4.7.1.根据ID查询
 
-![1570608523919](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570608523919.png)
+![1570608523919](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608523919.png)
 
 只需get方法，URL为`IP:端口/索引名/类型/主键ID`
 
@@ -158,11 +158,11 @@ URL：`IP:端口/索引名/类型/主键ID`，请求体为文档内容。这里E
 
 #### 4.7.2.根据关键字查询
 
-![1570608608924](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570608608924.png)
+![1570608608924](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608608924.png)
 
 使用POST请求，URL为`IP:端口/索引名/类型/_search`，请求体中需要拼接query与term
 
-![1570608664383](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570608664383.png)
+![1570608664383](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608664383.png)
 
 可以查出多条数据
 
@@ -170,11 +170,11 @@ URL：`IP:端口/索引名/类型/主键ID`，请求体为文档内容。这里E
 
 在Lucene中具有QueryPaser查询，是先将请求关键词进行分词再进行查询，再ES中当然也支持，但是改名叫QueryString了。
 
-![1570609286169](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570609286169.png)
+![1570609286169](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570609286169.png)
 
 URL和普通关键词查询相同，在请求体中`query`下层是`query_string`然后固定内容为`default_field`请求字段和`query`关键词
 
-![1570609362029](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570609362029.png)
+![1570609362029](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570609362029.png)
 
 可以看到命中了document或content的数据
 
@@ -184,7 +184,7 @@ URL和普通关键词查询相同，在请求体中`query`下层是`query_string
 
 和Lucene一样，ES的分析器默认使用Standard，只对英文友好，对中文没有分析效果
 
-![1570610868059](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570610868059.png)
+![1570610868059](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570610868059.png)
 
 URL为`IP:端口/_analyzer?analyzer=分析器名称&text=分析内容`
 
@@ -196,9 +196,9 @@ URL为`IP:端口/_analyzer?analyzer=分析器名称&text=分析内容`
 
 ik分析器又分为两种，一是`ik_smart`指最少划分，一是`ik_max_word`指最细粒度划分，下图可以看到区别：
 
-![1570623480119](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570623480119.png)
+![1570623480119](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570623480119.png)
 
-![1570623463217](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570623463217.png)
+![1570623463217](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570623463217.png)
 
 ## 六、ElasticSearch集群
 
@@ -228,11 +228,11 @@ discovery.zen.ping.unicast.hosts: ["127.0.0.1:9301","127.0.0.1:9302","127.0.0.1:
 
 为三个配置文件配置好，然后顺序启动。在es可视化工具中可以看到，3节点连成集群
 
-![1570670076366](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570670076366.png)
+![1570670076366](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570670076366.png)
 
 创建索引：`PUT 127.0.0.1:9200/test`
 
-![1570670282795](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570670282795.png)
+![1570670282795](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570670282795.png)
 
 这时我们发现分片副本没有分配节点，健康值还是像原来的单节点ES一样，网上查了一下，是因为数据保存磁盘默认值为85%，如果磁盘占用量大于85%，便不会自动分配副本，这时我们有两种方法：
 
@@ -254,10 +254,10 @@ URL:`PUT 127.0.0.1:9200/_cluster/settings`
 
 在配置文件elasticsearch.yml中配置
 
-![1570670648628](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570670648628.png)
+![1570670648628](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570670648628.png)
 
 也可以解决此问题
 
-![1570672858014](C:\Users\S1\AppData\Roaming\Typora\typora-user-images\1570672858014.png)
+![1570672858014](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570672858014.png)
 
 正确的集群节点分片，粗框框的是主分片，细一点的是分片备份
