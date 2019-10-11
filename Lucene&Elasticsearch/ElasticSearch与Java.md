@@ -385,6 +385,18 @@ public void multiSearchByID() throws Exception{
 
 ### 2.8.根据Term查询
 
+根据Term查询会发现查询方式改变了，这也是es最常用的查询方式
+
+即：
+
+1.创建一个SearchRequest，设定请求信息，如：索引名，Type类型，SearchType类型。
+
+2.创建SearchSourceBuilder，配置查询信息，如：分页情况，如何查询（Term查询，聚合查询等），高亮显示，超时时间
+
+3.使用QueryBuilders配置查询方式，这里方式比较多，下面介绍
+
+这里searchType类型下面介绍。
+
 ```java
 @Test
     /**
@@ -411,4 +423,128 @@ public void multiSearchByID() throws Exception{
         client.close();
     }
 ```
+
+#### 2.7.1.QueryBuilders类型
+
+```java
+// 设置QueryBuilders查询方式
+QueryBuilder query = QueryBuilders.termQuery("name", "小明"); //Term查询
+//QueryBuilder query = QueryBuilders.matchQuery("content", "新"); //类似Term查询
+//QueryBuilder query = QueryBuilders.matchAllQuery(); // 检索所有文档数据
+//QueryBuilder query = QueryBuilders.multiMatchQuery("新", "content","title"); //多字段匹配
+```
+
+可以看到常见的有这几种，还有一种比较重要的是**复合查询**：
+
+```java
+BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+// 必须的查询条件，是一个List集合
+boolQuery.must(QueryBuilders.termQuery("content", "content"));
+// 必须不含有的查询条件
+boolQuery.mustNot(QueryBuilders.termQuery("title", "document"));
+// 设置查询信息，以及分页信息
+builder.query(boolQuery);
+```
+
+这段符合查询意思是，查询content中含有content且title中不含有document的数据
+
+![1570773564670](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570773564670.png)
+
+![1570773573676](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570773573676.png)
+
+可以看到正确显示出id为3的数据。
+
+### 2.9.聚合查询
+
+聚合查询使用`AggregationBuilders`来创建聚合条件
+
+一般来说使用方法：
+
+```java
+// 聚合查询，terms为聚合后字段名，field为字段名
+TermsAggregationBuilder aggre = AggregationBuilders.terms("by_name").field("name");
+// 添加聚合条件
+aggre.subAggregation(AggregationBuilders.sum("sum_score").field("score"));
+// 设置聚合信息
+builder.aggregation(aggre);
+```
+
+我们想进行获取每个学生总成绩，便需要聚合查询：
+
+![1570761040766](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570761040766.png)
+
+代码：
+
+```java
+@Test
+    /**
+     * 聚合查询
+     */
+    public void searchByAggregation() throws Exception{
+        // 1.创建一个SearchRequest，设置索引名
+        SearchRequest request = new SearchRequest("student_index");
+        // 设置type
+        request.types("stu");
+        request.searchType(SearchType.DEFAULT);
+        // 2.配置SourceBuilder，设置查询信息
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        // 聚合查询，terms为聚合后字段名，field为字段名
+        TermsAggregationBuilder aggre = AggregationBuilders.terms("by_name").field("name.keyword");
+        aggre.subAggregation(AggregationBuilders.sum("sum_score").field("score"));
+        // 设置查询信息，以及分页信息
+        builder.query(QueryBuilders.matchAllQuery());
+        builder.aggregation(aggre);
+        request.source(builder); // 填入request
+        SearchResponse response = client.search(request, RequestOptions.DEFAULT); // 查询
+        Aggregations aggregations = response.getAggregations();// 获取聚合数据
+        Terms term = aggregations.get("by_name");
+        for(Terms.Bucket bucket : term.getBuckets()){
+            Sum sum = bucket.getAggregations().get("sum_score");
+            System.out.println(bucket.getKey()+" : "+ sum.getValue());
+        }
+        client.close();
+    }
+```
+
+执行后会发现报错：
+
+![1570772482775](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570772482775.png)
+
+这是因为我们的name字段时text属性，而ES5之后对**text属性聚合需要花费大量时间**，默认是禁止的，这时我们需要重新设置name属性：
+
+![1570764601123](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570764601123.png)
+
+设置fielddata为true。
+
+再次执行，发现又报错！
+
+![1570761094053](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570761094053.png)
+
+上网查没有查到结果，思考一下，我这java是6.6的api，而es引擎是5.6的，是不是**版本冲突问题**呢，我下载一个6.x的ES启动后再次执行，可以获得想要的结果。
+
+![1570764636917](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570764636917.png)
+
+
+
+## 三、SearchType
+
+ES是分布式的全文检索系统，其特点就是分片存储数据，ES如何获取用户需要的数据且排序呢？ES搜索排序分为两步：
+
+1）ES向5个分片发出请求，叫Scatter
+
+2）5个分片独立搜索，将符合条件的数据返回，ES将数据集中起来再进行重新排序，返回给用户，即Gather
+
+这样就会出现问题：
+
+1）数量问题：用户需要10条数据，ES向5个分片发出前10条数据的请求，得到结果会有50条数据，ES再进行排序返回，用户就会获得50条数据，不符合请求数量。
+
+2）排序问题：ES的排序是基于分片传来的分数的，即每个分片有不同的使用频率，举个例子：分片1的name字段的mike使用200次，allie使用100次，用户查询1条最高使用数据，当然分片1返回mike，这时分片2的name字段bob使用10次，jasper使用5次，就会返回bob，这样的话明显allie的使用频率更高。所以如果要解决这种情况，ES要先获取分片上频率，然后统一计算后再排序查询。
+
+这两个问题，估计ES也没有什么较好的解决方法，最终把选择的权利交给用户，方法就是在搜索的时候指定query type。
+
+有四种SearchType：
+
+- Query and fetch：即ES请求所有分片，返回n*5的数据整合排序，就会出现上面的问题，返回数量是用户要求的n倍。这种方法以及被弃用了
+- query then fetch：ES请求所有分片，获取排名相关的信息，而不是数据，es获取后进行计算然后再根据计算结果向不同分片请求数据，这样可以解决上面数量问题和排序问题。默认使用，也最常用
+- DFS query then fetch：同样多了初始化散发过程。
 
