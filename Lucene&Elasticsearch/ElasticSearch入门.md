@@ -232,7 +232,7 @@ GET /ecommerce/product/_search
 }
 ```
 
-### 4.7.4.full-text search（全文检索）
+#### 4.7.4.full-text search（全文检索）
 
 这个搜索方式便是全文检索的精髓了，我们拿案例说话
 
@@ -268,7 +268,7 @@ gaolujie -1
 
 通过索引匹配，可以发下producer命中了1和4的数据，yagao命中了4的数据，所以id为4的数据匹配分数高，id为1的数据匹配分数低！这也是倒排索引的优点~
 
-### 4.7.5.phrase search（短语搜索）
+#### 4.7.5.phrase search（短语搜索）
 
 跟全文检索相对应，相反，全文检索会将输入的搜索串拆解开来，去倒排索引里面去一一匹配，只要能匹配上任意一个拆解后的单词，就可以作为结果返回
 phrase search，要求输入的搜索串，**必须在指定的字段文本中，完全包含一模一样的，才可以算匹配**，才能作为结果返回
@@ -284,7 +284,7 @@ GET /ecommerce/product/_search
 }
 ```
 
-### 4.7.6.highlight search
+#### 4.7.6.highlight search
 
 高亮搜索，对于搜索结果拼接上一些特殊代码，比如：
 
