@@ -2,7 +2,7 @@
 
 ### 1.1.什么是ES
 
-ElasticSearch简称es，是基于Lucene的一款**分布式全文检索服务器**，实时存储，检索数据，处理PB级别数据，扩展性好是它的几大特点。es也使用Java开发，底层为Lucene来实现索引搜索功能，但是它使用**RESTful风格API**来简化Lucene复杂的操作，从而使得全文检索更简单。
+ElasticSearch简称es，是基于Lucene的一款**分布式全文检索服务器**，实时存储，检索数据，分布式处理PB级别数据，自动分片并维护冗余副本，数据安全，扩展性好是它的几大特点。es也使用Java开发，底层为Lucene来实现索引搜索功能，但是它使用**RESTful风格API**来简化Lucene复杂的操作，从而使得全文检索更简单。
 
 ### 1.2.ES的使用场景
 
@@ -23,12 +23,12 @@ SoundCloud：“SoundCloud使用ElasticSearch为1.8亿用户提供即时而精�
 
 阿里使用ES 构建挖财自己的日志采集和分析体系 
 
-### 1.3.ES对比Solr
+### 1.3.ES的功能与特点
 
-- solr使用zookeeper作为分布式管理，而ES本身自带分布式协调管理功能
-- solr支持多种格式数据，es只支持json格式数据
-- solr在传统搜索中强于es，es在实时搜索效率高于solr
-- solr本身官方扩展功能多，es更注重核心，扩展功能由第三方插件提供
+- 分布式搜索引擎和数据分析
+- 对海量数据进行近实时处理（也是基于分布式的）
+- 全文检索，结构化检索，数据分析
+- 开箱即用，部署配置非常简单
 
 ## 二、ElasticSearch概念
 
@@ -67,9 +67,9 @@ ES中的字段也对应MYSQL中的字段，根据文档数据的不同属性来�
 
 ### 2.8.分片和复制
 
-分片是ES数据存储的文件块，是**数据的最小单元块**，对于一个10亿数据的文档而言，如果仅仅有一个节点来存储，那样是无法实现的，而且就算实现了对其操作也会极其缓慢，所以ES提供了分片机制，当创建索引时确定分片数量，例如分了5片，那么存储数据时ES会均衡的将数据分在这5片中，而不是同一个。
+**分片**：是ES数据存储的文件块，是**数据的最小单元块**，对于一个10亿数据的文档而言，如果仅仅有一个节点来存储，那样是无法实现的，而且就算实现了对其操作也会极其缓慢，所以ES提供了分片机制，将大数据量存储在多台服务器上，每台服务器保存一些shard，即横向扩展，搜索分析操作分不到多台服务器上执行，效率更高。
 
-而对于复制是为了防止服务器故障而导致数据丢失，对于5个主分片会进行拷贝，形成5个从分片提供数据的冗余。
+**复制**：是为了防止服务器故障而导致数据丢失，对于5个主分片会进行拷贝，形成5个从分片提供数据的冗余，当主shard故障时，会使用replica提供服务，防止数据丢失。
 
 索引默认创建5个分片和一组从分片，**只有ES形成集群时，从分片才会被启用**，因为主从在一个ES节点上是没有意义的，ES故障会导致主从都损坏。
 
@@ -146,37 +146,167 @@ URL：`IP:端口/索引名/类型/主键ID`，请求体为文档内容。这里E
 
 ### 4.7.查询索引
 
-查询有三种，根据id，关键字，QueryString查询
+#### 4.7.1.query string search
 
-#### 4.7.1.根据ID查询
+query string search的由来，因为search参数都是以http请求的query string来附带的
 
-![1570608523919](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608523919.png)
+搜索商品名称中包含yagao的商品，而且按照售价降序排序：
 
-只需get方法，URL为`IP:端口/索引名/类型/主键ID`
+`GET /ecommerce/product/_search?q=name:yagao&sort=price:desc`
 
-这种查询只能查出一条数据。
+适用于临时的在命令行使用一些工具，比如curl，快速的发出请求，来检索想要的信息；但是如果查询请求很复杂，是很难去构建的
+在生产环境中，几乎很少使用query string search
 
-#### 4.7.2.根据关键字查询
+#### 4.7.2.query DSL
 
-![1570608608924](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608608924.png)
+DSL：Domain Specified Language，特定领域的语言
+http request body：请求体，可以用json的格式来构建查询语法，比较方便，可以构建各种复杂的语法，比query string search肯定强大多了
 
-使用POST请求，URL为`IP:端口/索引名/类型/_search`，请求体中需要拼接query与term
+1）查询所有的商品
 
-![1570608664383](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570608664383.png)
+```json
+GET /ecommerce/product/_search
+{
+  "query": { "match_all": {} }
+}
+```
 
-可以查出多条数据
+2）查询名称包含yagao的商品，同时按照价格降序排序
 
-#### 4.7.3.QueryString查询
+```
+GET /ecommerce/product/_search
+{
+    "query" : {
+        "match" : {
+            "name" : "yagao"
+        }
+    },
+    "sort": [
+        { "price": "desc" }
+    ]
+}
+```
 
-在Lucene中具有QueryPaser查询，是先将请求关键词进行分词再进行查询，再ES中当然也支持，但是改名叫QueryString了。
+3）分页查询商品，总共3条商品，假设每页就显示1条商品，现在显示第2页，所以就查出来第2个商品
 
-![1570609286169](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570609286169.png)
+```
+GET /ecommerce/product/_search
+{
+  "query": { "match_all": {} },
+  "from": 1,
+  "size": 1
+}
+```
 
-URL和普通关键词查询相同，在请求体中`query`下层是`query_string`然后固定内容为`default_field`请求字段和`query`关键词
+4）指定要查询出来商品的名称和价格就可以
 
-![1570609362029](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570609362029.png)
+```
+GET /ecommerce/product/_search
+{
+  "query": { "match_all": {} },
+  "_source": ["name", "price"]
+}
+```
 
-可以看到命中了document或content的数据
+更加适合生产环境的使用，可以构建复杂的查询
+
+#### 4.7.3.query filter
+
+过滤器，例如搜索商品名称包含yagao，而且售价大于25元的商品
+
+```
+GET /ecommerce/product/_search
+{
+  "query":{
+    "bool": {
+      "must": {
+        "match":{"name":"yagao"}
+      },
+      "filter": {
+        "range":{
+          "price":{"gt":25}
+        }
+      }
+    }
+  }
+}
+```
+
+### 4.7.4.full-text search（全文检索）
+
+这个搜索方式便是全文检索的精髓了，我们拿案例说话
+
+查询producer是yagao producer的数据
+
+```
+GET /ecommerce/product/_search
+{
+  "query":{
+    "match": {
+      "producer": "yagao producer"
+    }
+  }
+}
+```
+
+结果：
+
+![1570787334701](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570787334701.png)
+
+这里只拿两个结果看，可以看到黑人牙膏的匹配分数高于高露洁牙膏，这就是全文检索的特点
+
+我们查询的是producer为yagao producer的数据，es会将其拆分为yagao和producer，像库里数据进行匹配
+
+**倒排索引**：
+
+```
+heiren - 4 (id)
+yagao - 4
+producer - 1,4
+gaolujie -1
+```
+
+通过索引匹配，可以发下producer命中了1和4的数据，yagao命中了4的数据，所以id为4的数据匹配分数高，id为1的数据匹配分数低！这也是倒排索引的优点~
+
+### 4.7.5.phrase search（短语搜索）
+
+跟全文检索相对应，相反，全文检索会将输入的搜索串拆解开来，去倒排索引里面去一一匹配，只要能匹配上任意一个拆解后的单词，就可以作为结果返回
+phrase search，要求输入的搜索串，**必须在指定的字段文本中，完全包含一模一样的，才可以算匹配**，才能作为结果返回
+
+```
+GET /ecommerce/product/_search
+{
+    "query" : {
+        "match_phrase" : {
+            "producer" : "yagao producer"
+        }
+    }
+}
+```
+
+### 4.7.6.highlight search
+
+高亮搜索，对于搜索结果拼接上一些特殊代码，比如：
+
+```
+GET /ecommerce/product/_search
+{
+  "query":{
+    "match_phrase": {
+      "producer": "yagao producer"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "producer":{}
+    }
+  }
+}
+```
+
+![1570787879853](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570787879853.png)
+
+yagao与producer添加上了em标签，这样在浏览器上显示就会像百度搜索一样标红
 
 ## 五、ElasticSearch的分析器
 
@@ -229,6 +359,28 @@ discovery.zen.ping.unicast.hosts: ["127.0.0.1:9301","127.0.0.1:9302","127.0.0.1:
 为三个配置文件配置好，然后顺序启动。在es可视化工具中可以看到，3节点连成集群
 
 ![1570670076366](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570670076366.png)
+
+### 6.1.集群查看
+
+1）查看集群健康状态
+
+es提供了一套api，叫cat api，用来查看es集群各种状态
+
+`GET /_cat/health?v`
+
+![1570783804278](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570783804278.png)
+
+status即集群健康状态：
+
+- yellow：每个索引的主分片都是active状态，副本分片处于不可用状态
+- green：主分片与副本分片都处于不可用状态
+- red：不是所有的主分片都是active状态的，即部分索引数据丢失
+
+2）快速查看集群中有哪些索引
+
+`GET /_cat/indices?v`
+
+### 6.2.集群健康问题
 
 创建索引：`PUT 127.0.0.1:9200/test`
 
