@@ -173,7 +173,7 @@ GET /ecommerce/product/_search
 
 2）查询名称包含yagao的商品，同时按照价格降序排序
 
-```
+```elm
 GET /ecommerce/product/_search
 {
     "query" : {
@@ -189,7 +189,7 @@ GET /ecommerce/product/_search
 
 3）分页查询商品，总共3条商品，假设每页就显示1条商品，现在显示第2页，所以就查出来第2个商品
 
-```
+```elm
 GET /ecommerce/product/_search
 {
   "query": { "match_all": {} },
@@ -200,7 +200,7 @@ GET /ecommerce/product/_search
 
 4）指定要查询出来商品的名称和价格就可以
 
-```
+```elm
 GET /ecommerce/product/_search
 {
   "query": { "match_all": {} },
@@ -214,7 +214,7 @@ GET /ecommerce/product/_search
 
 过滤器，例如搜索商品名称包含yagao，而且售价大于25元的商品
 
-```
+```elm
 GET /ecommerce/product/_search
 {
   "query":{
@@ -238,7 +238,7 @@ GET /ecommerce/product/_search
 
 查询producer是yagao producer的数据
 
-```
+```elm
 GET /ecommerce/product/_search
 {
   "query":{
@@ -273,7 +273,7 @@ gaolujie -1
 跟全文检索相对应，相反，全文检索会将输入的搜索串拆解开来，去倒排索引里面去一一匹配，只要能匹配上任意一个拆解后的单词，就可以作为结果返回
 phrase search，要求输入的搜索串，**必须在指定的字段文本中，完全包含一模一样的，才可以算匹配**，才能作为结果返回
 
-```
+```elm
 GET /ecommerce/product/_search
 {
     "query" : {
@@ -288,7 +288,7 @@ GET /ecommerce/product/_search
 
 高亮搜索，对于搜索结果拼接上一些特殊代码，比如：
 
-```
+```elm
 GET /ecommerce/product/_search
 {
   "query":{
@@ -307,6 +307,139 @@ GET /ecommerce/product/_search
 ![1570787879853](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1570787879853.png)
 
 yagao与producer添加上了em标签，这样在浏览器上显示就会像百度搜索一样标红
+
+### 4.8.聚合查询
+
+1）计算每个tag下的商品数量
+
+```elm
+GET /ecommerce/product/_search
+{
+    "size":0,
+    "aggs":{
+        "by_tags":{
+          "terms": {
+            "field":"tags"
+          }
+        }
+    }
+}
+```
+
+2）对名称中包含yagao的商品，计算每个tag下的商品数量
+
+```elm
+GET /ecommerce/product/_search
+{
+    "size":0,
+    "query":{
+        "match":{
+            "name":"yagao"
+        }
+    },
+    "aggs":{
+        "by_tags":{
+          "terms": {
+            "field":"tags"
+          }
+        }
+    }
+}
+```
+
+3）先分组，再算每组的平均值，计算每个tag下的商品的平均价格
+
+```elm
+GET /ecommerce/product/_search
+{
+    "size":0,
+    "aggs":{
+        "by_tags":{
+          "terms": {
+            "field":"tags"
+          },
+          "aggs":{
+              "avg_price":{
+                  "avg":{
+                      "field":"price"
+                  }
+              }
+          }
+        }
+    }
+}
+```
+
+4）计算每个tag下的商品的平均价格，并且按照平均价格降序排序
+
+```elm
+GET /ecommerce/product/_search
+{
+    "size":0,
+    "aggs":{
+        "by_tags":{
+            "terms":{
+                "field":"tags",
+                "order":{
+                    "avg_price":"desc"
+                }
+            },
+            "aggs":{
+             	"avg_price":{
+                    "avg":{
+                        "field":"price"
+                    }
+             	}   
+            }
+        }
+    }
+}
+```
+
+5）按照指定的价格范围区间进行分组，然后在每组内再按照tag进行分组，最后再计算每组的平均价格
+
+```elm
+GET /ecommerce/product/_search
+{
+  "size": 0,
+  "aggs": {
+    "range_price": {
+      "range": {
+        "field": "price",
+        "ranges": [
+          {
+            "from": 20,
+            "to": 30
+          },
+          {
+            "from": 30,
+            "to": 50
+          }
+        ]
+      },
+      "aggs": {
+        "by_tags": {
+          "terms": {
+            "field": "tags",
+            "order": {
+              "avg_price": "desc"
+            }
+          },
+          "aggs":{
+            "avg_price":{
+              "avg": {
+                "field": "price"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+
 
 ## 五、ElasticSearch的分析器
 
