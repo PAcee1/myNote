@@ -8,6 +8,7 @@
 1、shard&replica机制再次梳理
 
 （1）index包含多个shard
+ES先将shard分配到对应的节点上，再将索引index均匀分配到多个shard上去
 （2）每个shard都是一个最小工作单元，承载部分数据，lucene实例，完整的建立索引和处理请求的能力
 （3）增减节点时，shard会自动在nodes中负载均衡
 （4）primary shard和replica shard，每个document肯定只存在于某一个primary shard以及其对应的replica shard中，不可能存在于多个primary shard
