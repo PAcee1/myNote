@@ -1,0 +1,72 @@
+
+除了之前讲解的一些配置，根据你的集群环境特殊的配置，我们这一讲来讲解最重要的内存的分配，提出一些问题，生产环境部署es，不可避免要回答一个问题，比如我的机器上有64G的内存，或者32G的内存，那么一般来说我应该分配多少个G的内存给es的jvm heap
+
+1、jvm heap分配
+
+es默认会给jvm heap分配2个G的大小，对于几乎所有的生产环境来说，这个内存都太小了。如果用这个默认的heap size，那么生产环境的集群肯定表现不会太好。
+
+有两个方式来调节es中的jvm heap size。最简单的就是设置环境变量，ES_HEAP_SIZE。当es进程启动的时候，会读取这个环境变量的值，然后设置为jvm的heap size。举例来说，可以这样来设置：export ES_HEAP_SIZE=10g。此外，还可以在启动es进程的时候，传递一个jvm的option，比如：ES_JAVA_OPTS="-Xms10g -Xmx10g" ./bin/elasticsearch，但是要注意-Xms和-Xmx最小和最大堆内存一定设置的一样，避免运行过程中的jvm heap resize，那会是一个非常耗时的过程。
+
+在老版本的es中，比如es 2.x里面，一般推荐用ES_HEAP_SIZE环境变量的方式来设置jvm heap size。
+
+在新版本的es中，比如es 5.x里面，一般推荐在jvm.options文件里面去设置jvm相关的参数。
+
+2、将机器上少于一半的内存分配给es
+
+一个常见的问题就是将es进程的jvm heap size设置的过于大了。比如我们有一台64G的机器，可能我们甚至想要给es jvm size设置64G内存。但是这是错误的。大家可能会觉得说，直接将机器上的可用的内存都分配给es jvm heap，性能是绝对高的，因为大量的数据都可以缓存在内存里面。
+
+虽然heap对于es来说是非常重要的，jvm heap被es用来存放很多内存中的数据结构来提供更快的操作性能。但是还有另外一个内存的用户，那就是lucene。lucene的设计就是要使用底层的os filesystem cache来缓存数据结构。lucene的segment是保存在单独的文件中的。因为这些segment是不可变的，所以这些文件实际上也从来不会改变。这样的话，就可以更好的缓存这些文件，底层的os cache会将hot segment驻留在内存中以供更快的访问。这些segment包括了倒排索引（为了全文检索）以及正排索引（为了聚合操作）。lucene的性能是严重依赖于底层的os的，但是如果我们给了过多的内存到es的jvm heap，那么就没有足够的内存留给lucene。这会极大的影响性能。
+
+这里想告诉大家的是，就是说，es的性能很大的一块，其实是由有多少内存留给操作系统的os cache，供lucene去缓存索引文件，来决定的。所以说lucene的os cache有多少是非常重要的。
+
+一般建议的是，将50%的内存分配给es jvm heap，然后留50%的内存给os cache。留给os cache的内存是不会不使用的，lucene会将剩下的内存全部用光，用来cache segment file。如果我们没有对任何分词的text field进行聚合操作，那么我们就不需要使用fielddata，我们甚至可以考虑给os cache更多的内存，因为fielddata是要用jvm heap。如果我们给jvm heap更少的内存，那么实际上es的性能反而会更好，因为更多的内存留给了lucene用os cache提升索引读写性能，同时es的jvm heap的gc耗时会更少。
+
+es部署的机器上，内存是如何分配的，如何使用的，如何决定我们的操作系统的，我们该如何给jvm和os cache分配内存
+
+3、不要给jvm分配超过32G内存
+
+还有另外一个原因不要将过多的内存分配给es的jvm heap。如果heap小于32G的化，jvm会用一种技术来压缩对象的指针，object pointer。在java中，所有的对象都会被分配到heap中，然后被一个pointer给引用。object pointer会指向heap中的对象，引用的是二进制格式的地址。
+
+对于32位的系统来说，jvm最大的heap size就是4G，解释一下，32位，0和1值，0和1在32位的组合是2^32次方的字节，除以1024就是多少k，再除以1024就是多少mb，再除以1024就是多少gb，最后算下来就是4G。对于64位的系统来说，heap size可以更大，但是64位的object pointer会耗费更多的空间，因为object pointer更大了。比浪费更多内存空间更恶劣的是，过大的object pointer会在cpu，main memory和LLC、L1等多级缓存间移动数据的时候，吃掉更多的带宽。
+
+所以jvm用了一种技术，叫做compressed oops来解决object pointer耗费过大空间的问题。这个技术的核心思想是，不要让object pointer引用内存中的二进制地址，而是让object pointer引用object offset。这就意味着32位的pointer可以引用400万个对象，而不是400万字节。这也意味着，使用32位的pointer，最大的heap大小可以到32G。此时只要heap size在32G以内，jvm就会自动启用32位的object pointer，因为32位的对象指针，足够引用32G的内存了，就可以用32位的pointer替代64位的pointer。但是32位的pointer比64位的pointer可以耗费更少的内存耗费。
+
+如果你给jvm heap分配的内存小于32G，此时jvm会自动使用32位的object pointer，同时是让pointer指向对象的offset，32位的object pointer就足以引用32G的内存，同时32位的pointer占用的内存空间很少，对cpu和memory之间移动数据的带宽开销也很少。这个过程就叫做compressed oops。
+
+但是一旦我们越过了32G这个界限，就是给jvm heap分配了超过32G的内存，比较坑了。就没有办法用32位的pointer+引用object offset的模式了，因为32位的pointer最多引用32G的内存，超过了32G，就没法用32位pointer。不用32位pointer，就只能用64位pointer，才能引用超过32G的内存空间。此时pointer就会退回到传统的object pointer引用对象的二进制地址的模式，此时object pinter的大小会急剧增长，更多的cpu到内存的带宽会被占据，更多的内存被耗费。实际上，不用compressed oops时，你如果给jvm heap分配了一个40~50G的内存的可用空间，实际上被object pointer可能都要占据十几G的内存空间，可用的空间量，可能跟使用了compressed oops时的32GB内存的可用空间，20多个G，几乎是一样的。
+
+因此，即使我们有很多内存，但是还是要分配给heap在32GB以内，否则的话浪费更多的内存，降低cpu性能，而且会让jvm回收更大的heap。
+
+综上所述，如果你给jvm heap分配超过32G的内存，实际上是没有什么意义的，因为用64位的pointer，1/3的内存都给object pointer给占据了，这段内存空间就浪费掉了。还不如分配32G以内，启用compressed oops，可用空间跟你分配50个G的内存，是一样的。
+
+所以也正是因为32G的限制，一般来说，都是建议说，如果你的es要处理的数据量上亿的话，几亿，或者十亿以内的规模的话，建议，就是用64G的内存的机器比较合适，有个5台，差不多也够了。给jvm heap分配32G，留下32G给os cache。
+
+4、在32G以内的话具体应该设置heap为多大？
+
+这个是根据具体情况而定的，不是固定死的，根据不同的jvm和平台而变。一般而言，将jvm heap size设置为31G比较安全一些。主要是要确保说，你设置的这个jvm heap大小，可以让es启用compressed oops这种优化机制。此外，可以给jvm option加入-XX:+PrintFlagsFinal，然后可以打印出来UseCompressedOops是否为true。这就可以让我们找到最佳的内存设置。因为可以不断调节内存大小，然后观察是否启用compressed oops。
+
+举例来说，如果在mac os上启动一个java 1.7，同时将heap size设置为32600mb，那么compressed oops是会开启的；但是如果设置为32766m，compressed oops就不会开启。相反的是，使用jdk 1.8的化，分配32766m，compressed oops是会开启的，设置为32767m，就不会开启。所以说，这个东西不是固定的。根据不同的操作系统以及jvm版本而定。
+
+在es启动日志中，我们可以查看compressed oops是否开启，比如下面的字样：[2015-12-16 13:53:33,417][INFO ][env] [Illyana Rasputin] heap size [989.8mb], compressed ordinary object pointers [true]。
+
+5、对于有1TB内存的超大内存机器该如何分配？
+
+如果我们的机器是一台超级服务器，内存资源甚至达到了1TB，或者512G，128G，该怎么办？首先es官方是建议避免用这种超级服务器来部署es集群的，但是如果我们只有这种机器可以用的话，我们要考虑以下几点：
+
+（1）我们是否在做大量的全文检索？考虑一下分配4~32G的内存给es进程，同时给lucene留下其余所有的内存用来做os filesystem cache。所有的剩余的内存都会用来cache segment file，而且可以提供非常高性能的搜索，几乎所有的数据都是可以在内存中缓存的，es集群的性能会非常高
+
+（2）是否在做大量的排序或者聚合操作？聚合操作是不是针对数字、日期或者未分词的string？如果是的化，那么还是给es 4~32G的内存即可，其他的留给es filesystem cache，可以将聚合好用的正排索引，doc values放在os cache中
+
+（3）如果在针对分词的string做大量的排序或聚合操作？如果是的化，那么就需要使用fielddata，这就得给jvm heap分配更大的内存空间。此时不建议运行一个节点在机器上，而是运行多个节点在一台机器上，那么如果我们的服务器有128G的内存，可以运行两个es节点，然后每个节点分配32G的内存，剩下64G留给os cache。如果在一台机器上运行多个es node，建议设置：cluster.routing.allocation.same_shard.host: true。这会避免在同一台物理机上分配一个primary shard和它的replica shard。
+
+6、swapping
+
+如果频繁的将es进程的内存swap到磁盘上，绝对会是一个服务器的性能杀手。想象一下，内存中的操作都是要求快速完成的，如果需要将内存页的数据从磁盘swap回main memory的化，性能会有多差。如果内存被swap到了磁盘，那么100微秒的操作会瞬间变成10毫秒，那么如果是大量的这种内存操作呢？这会导致性能急剧下降。
+
+因此通常建议彻底关闭机器上的swap，swapoff -a，如果要永久性关闭，需要在/etc/fstab中配置
+
+如果没法完全关闭swap，那么可以尝试调低swappiness至，这个值是控制os会如何将内存swap到磁盘的。这会在正常情况下阻止swap，但是在紧急情况下，还是会swap。一般用sysctl来设置，vm.swappiness = 1。如果swappiness也不能设置，那么就需要启用mlockall，这就可以让我们的jvm lock住自己的内存不被swap到磁盘上去，在elasticsearch.yml中可以设置：bootstrap.mlockall: true。
+
+
+
+

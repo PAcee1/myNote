@@ -1,0 +1,131 @@
+
+这块我们跟大家说一下，一般来说，你即使要围绕es搭建一个集群的话，也建议至少4~5个节点，因为其实不光是es，后面可能还有kibana，logstash，elk生态栈的其他的东西要部署，包括这个高手进阶篇的课程，后面也是会不断的免费升级的，后面再出几个课程，单独收费，讲解运维，项目，ELK，等等。但是后来觉得说，既然大家都很支持我们，我们说还是决定敢说，对已经购买高级篇的同学，会不断免费升级，第二版，运维，第三版，搜索项目，第四版，ELK
+
+部署一个4个节点的虚拟机集群，每个虚拟机是2核4G，我的笔记本是24G，双核的，16G，宿主机留8G内存
+
+用2核4G，虚拟cpu core，4台，基本可以去模拟真实的生产环境
+
+包括我们接下来的一些部署，都尽量用接近生产环境的标准去部署，让大家可以体验一下
+
+1、在虚拟机中安装CentOS
+
+启动一个virtual box虚拟机管理软件（vmware，我早些年，发现不太稳定，主要是当时搭建一个hadoop大数据的集群，发现每次休眠以后再重启，集群就挂掉了）
+
+virtual box，发现很稳定，集群从来不会随便乱挂，所以就一直用virtual box了
+
+安装virtual box
+
+用的是什么centos镜像，CentOS比较新的版本是7了，然后服务器上装操作系统的话，内存一般比较大，一般是安装64位的，32位的有一个最大内存4G的限制
+
+（1）使用课程提供的CentOS 7镜像即可，CentOS-7-x86_64-Minimal-1611.iso。
+（2）创建虚拟机：打开Virtual Box，点击“新建”按钮，点击“下一步”，输入虚拟机名称为elasticsearch01，选择操作系统为Linux，选择版本为Red Hat-64bit，分配4096MB内存，后面的选项全部用默认，在Virtual Disk File location and size中，一定要自己选择一个目录来存放虚拟机文件，最后点击“create”按钮，开始创建虚拟机。
+（3）设置虚拟机网卡：选择创建好的虚拟机，点击“设置”按钮，在网络一栏中，连接方式中，选择“Bridged Adapter”。
+（4）安装虚拟机中的CentOS 7操作系统：选择创建好的虚拟机，点击“开始”按钮，选择安装介质（即本地的CentOS 7镜像文件），按照课程选择后自动安装即可
+（5）安装完以后，CentOS会提醒你要重启一下，就是reboot，你就reboot就可以了。
+
+（6）配置网络
+
+vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+
+先让它动态分配一个ip地址
+
+ONBOOT=yes
+
+service network restart
+
+ip addr
+
+再设置静态ip地址
+
+BOOTPROTO=static
+IPADDR=192.168.31.250
+NETMASK=255.255.255.0 
+GATEWAY=192.168.31.1 
+
+service network restart
+
+ip addr
+
+配置DNS
+
+检查NetManager的状态：systemctl status NetworkManager.service
+检查NetManager管理的网络接口：nmcli dev status 
+检查NetManager管理的网络连接：nmcli connection show
+设置dns：nmcli con mod enp0s3 ipv4.dns "114.114.114.114 8.8.8.8"
+让dns配置生效：nmcli con up enp0s3
+
+（7）配置hosts
+
+vi /etc/hosts
+配置本机的hostname到ip地址的映射
+
+（8）配置SecureCRT
+
+此时就可以使用SecureCRT从本机连接到虚拟机进行操作了
+
+一般来说，虚拟机管理软件，virtual box，可以用来创建和管理虚拟机，但是一般不会直接在virtualbox里面去操作，因为比较麻烦，没有办法复制粘贴
+
+SecureCRT，在windows宿主机中，去连接virtual box中的虚拟机
+
+收费的，我这里有完美破解版，跟着课程一起给大家，破解
+
+（9）关闭防火墙
+
+systemctl stop firewalld.service
+systemctl disable firewalld.service
+
+关闭windows的防火墙
+
+后面要搭建集群，有的大数据技术的集群之间，在本地你给了防火墙的话，可能会没有办法互相连接，会导致搭建失败
+
+（10）配置yum
+
+yum clean all
+yum makecache
+yum install wget
+
+------------------------------------------------------------------------------------------
+
+2、在每个CentOS中都安装Java
+
+WinSCP，就是在windows宿主机和linux虚拟机之间互相传递文件的一个工具
+
+（1）安装JDK
+
+1、将jdk-8u131-linux-x64.rpm通过WinSCP上传到虚拟机中
+2、安装JDK：rpm -ivh jdk-8u131-linux-x64.rpm
+3、配置jdk相关的环境变量
+vi .bashrc
+export JAVA_HOME=/usr/java/latest
+export PATH=$PATH:$JAVA_HOME/bin
+source .bashrc
+4、测试jdk安装是否成功：java -version
+
+------------------------------------------------------------------------------------------
+
+3、在4个虚拟机中安装CentOS集群
+
+（1）按照上述步骤，再安装三台一模一样环境的linux机器
+（2）另外三台机器的hostname分别设置为elasticsearch02，elasticsearch03，elasticsearch04
+（3）安装好之后，在每台机器的hosts文件里面，配置好所有的机器的ip地址到hostname的映射关系
+
+比如说，在elasticsearch01的hosts里面
+
+192.168.31.250 elasticsearch01
+192.168.31.xxx elasticsearch02
+192.168.31.xxx elasticsearch03
+192.168.31.xxx elasticsearch04
+
+------------------------------------------------------------------------------------------
+
+4、配置4台CentOS为ssh免密码互相通信
+
+（1）首先在三台机器上配置对本机的ssh免密码登录
+ssh-keygen -t rsa
+生成本机的公钥，过程中不断敲回车即可，ssh-keygen命令默认会将公钥放在/root/.ssh目录下
+cd /root/.ssh
+cp id_rsa.pub authorized_keys
+将公钥复制为authorized_keys文件，此时使用ssh连接本机就不需要输入密码了
+
+（2）接着配置三台机器互相之间的ssh免密码登录
+使用ssh-copy-id -i hostname命令将本机的公钥拷贝到指定机器的authorized_keys文件中

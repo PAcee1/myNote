@@ -1,0 +1,37 @@
+
+gateway，elasticsearch底层的一个module，这个module，你也可以认为是什么呢？认为是es代码中的一个模块
+
+gateway这个模块是负责干什么的，module，java，j2ee，java web，用户管理模块，订单管理模块。。。用户管理模块，就是类似一个module，是用来管理用户信息的
+
+elasticsearch底层模块，英文，module，类似用户管理模块，订单管理模块，gateway module，是用来进行es自身的一些元数据，比如说cluster state，里面包含了一些集群中有哪些node，每个node的信息，负载，资源，索引，每个索引的shard在各个node上分配的一些信息啊。。。
+
+gateway module，是负责用来存储每个es节点的cluster state的，node重启的时候，gateway也会负责将本地磁盘上的cluster state给它读取出来，放入内存中
+
+local gateway module，用来存储cluster state，并且在集群重启的时候共享数据
+
+以下的设置，必须在每个master候选节点上都进行设置
+
+gateway.expected_nodes：要求必须有多少个节点在集群中，当加入集群中的节点数量达到这个期望数值之后，每个node的local shard的恢复就会理解开始，默认的值是0，也就是不会做任何的等待
+
+gateway.expected_master_nodes：要求必须有多少个master node在集群中，只要有这个数量的master node加入了集群，每个node的local shard recovery就会立即开始，默认的值是0
+
+gateway.expected_data_nodes：要求必须有多少个data node在集群中，只要有这个数量的master node加入了集群，每个node的local shard recovery就会立即开始，默认的值是0
+
+gateway.recover_after_time：如果期望的节点数量没有达标，那么会等待一定的时间，然后就开始进行shard recovery，默认是等待5m
+
+如果gateway.recover_after_time时间范围内，指定数量的节点还没有加入集群，但是只要满足下面的条件之一就会立即开始恢复
+
+gateway.recover_after_nodes：只要指定数量的节点加入集群，就开始进行恢复
+
+gateway.recover_after_master_nodes：只要指定数量的master节点加入集群，就开始进行恢复
+
+gateway.recover_after_data_nodes：只要指定数量的data node加入集群，就开始恢复
+
+比如说，集群中一共有10个node
+
+gateway.recover_after_nodes: 8
+gateway.expected_nodess: 10
+gateway.recover_after_time: 10m
+
+要求集群中达到8个节点，接下来，如果等待超过10分钟那么，就会开始shard recovery，或者是到了8个节点之后，在10分钟之内，立即到了10个节点，那么也会立即开始shard recovery
+

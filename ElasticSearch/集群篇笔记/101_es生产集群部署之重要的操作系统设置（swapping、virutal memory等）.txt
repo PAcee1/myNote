@@ -1,0 +1,102 @@
+
+1、系统的重要配置
+
+理想情况下，es应该单独在一个服务器上运行，能够使用服务器上的所有资源。为了达到上述目标，我们需要配置操作系统，来允许用户运行es并且获取比默认情况下更多的资源。
+
+在生产环境中下面的一些设置必须配置一下：
+
+（1）禁止swapping
+（2）确保拥有足够的虚拟内存
+（3）确保拥有足够的线程数量
+
+开发模式 vs 生产模式
+
+默认情况下，es会假设你是在开发模式下运行的。如果上面的任何配置没有正确的设置，那么会输出一些warning到日志文件中，但是我们还是可以启动es进程的。
+
+但是如果我们配置了网络设置，比如network.host，es会认为我们是运行在生产环境中的，然后就会将上述warning升级为exception。这些exception会阻止我们的es节点启动。这是一个重要的安全保障措施来确保我们不会因为错误的配置了es server，而导致数据丢失。
+
+2、配置系统设置
+
+在/etc/security/limits.conf中，可以配置系统设置
+
+也可以用ulimit临时配置系统设置
+
+在linux操作系统中，ulimit可以用来临时的改变资源限制。通常需要用root权限来设置ulimit。
+
+举例，如果要设置file descriptor为65536，可以用如下的命令来设置：
+
+ulimit -n 65536
+
+但是在linux操作系统中，实际上永久性的资源限制可以通过编辑/etc/security/limits.conf文件来设置。比如要设置file descriptor，可以再limits.conf中加入下面的行：
+
+elasticsearch - nofile 65536
+
+在下一次elasticsearch用户开启一个新的会话时就会生效
+
+设置jvm option
+
+一般建议通过jvm.options配置文件来设置es的jvm option。默认的地址是config/jvm.options
+
+每行是一个jvm argument
+
+此外，如也可以通过ES_JAVA_OPTS环境变量来设置jvm option，比如下面的命令：
+
+export ES_JAVA_OPTS="$ES_JAVA_OPTS -Djava.io.tmpdir=/path/to/temp/dir"
+
+3、禁止swapping
+
+大多数操作系统都会使用尽量多的内存来进行file system cache，并且尽量将不经常使用的java应用的内存swap到磁盘中去。这会导致jvm heap的部分内存，甚至是用来执行代码的内存页被swap到磁盘中去。
+
+swapping对于性能来说是非常差劲的，为了es节点的稳定性考虑，应该尽量避免这种swapping。因为swapping会导致gc过程从毫秒级变成分钟级，在gc的时候需要将内存从磁盘中swapping到内存里，特别耗时，这会导致es节点响应请求变得很慢，甚至导致es node跟cluster失联。在一个弹性的分布式系统中，让操作系统kill掉某一个节点，是很高效的。
+
+有三种方法可以disable swapping。推荐的option是彻底禁用swap，如果做不到的化，也得尽量最小化swappiness的影响，比如通过lock memory的方法。
+
+（1）禁用所有的swapping file
+
+通常来说，es进程会在一个节点上单独运行，那么es进程的内存使用是由jvm option控制的。
+
+可以使用下面的命令临时性禁止swap：swapoff -a
+
+要永久性的禁止swap，需要修改/etc/fstab文件，然后将所有包含swap的行都注释掉
+
+（2）配置swappiness
+
+另外一个方法就是通过sysctl，将vm.swappiness设置为1，这可以尽量减少linux内核swap的倾向，在正常情况下，就不会进行swap，但是在紧急情况下，还是会进行swap操作。sysctl -w vm.swappiness=1
+
+（3）启用bootstrap.memory_lock
+
+最后一个选项，就是用mlockall，将es jvm进程的address space锁定在内存中，阻止es内存被swap out到磁盘上去。在config/elasticsearch.yml中，可以配置：
+
+bootstrap.memory_lock: true
+
+GET _nodes?filter_path=**.mlockall，通过这行命令可以检查mlockall是否开启了
+
+如果发现mlockall是false，那么意味着mlockall请求失败了。会看到一行日志，unable to lock jvm memory。
+
+最大可能的原因，就是在linux系统中，启动es进程的用户没有权限去lock memory，需要通过以下方式进行授权：
+
+ulimit -l unlimited
+
+/etc/security/limits.conf，memlock设置为unlimited
+
+另外一个原因可能是临时目录使用noexec option来mount了。可以通过指定一个新的临时目录来解决
+
+export ES_JAVA_OPTS="$ES_JAVA_OPTS -Djava.io.tmpdir=/path/to/temp/dir"
+
+当然也可以通过在jvm.options文件中来设置java.io.tmpdir
+
+4、虚拟内存
+
+es使用hybrid mmapfs / niofs目录来存储index数据，操作系统的默认mmap count限制是很低的，可能会导致内存耗尽的异常。
+
+需要提升mmap count的限制：sysctl -w vm.max_map_count=262144
+
+如果要永久性设置这个值，要修改/etc/sysctl.conf，将vm.max_map_count的值修改一下，重启过后，用sysctl vm.max_map_count来验证一下数值是否修改成功
+
+es同时会用NioFS和MMapFS来处理不同的文件，我们需要设置最大的map刷另，这样我们才能有足够的虚拟内存来给mmapped文件使用，可以用sysctl来设置：sysctl -w vm.max_map_count=262144。还可以再/etc/sysctl.conf中，对vm.max_map_count来设置。
+
+5、设置线程的数量
+
+es用了很多线程池来应对不同类型的操作，在需要的时候创建新的线程是很重要的。要确保es用户能创建的最大线程数量至少在2048以上。
+
+可以通过ulimit -u 2048来临时设置，也可以在/etc/security/limits.conf中设置nproc为2048来永久性设置。

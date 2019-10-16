@@ -1,0 +1,74 @@
+
+1、安装es
+
+adduser elasticsearch
+passwd elasticsearch
+chown -R elasticsearch /usr/local/elasticsearch
+
+2、安装logstash-input-jdbc插件
+
+yum install -y gem
+
+gem sources --add https://ruby.taobao.org/ --remove https://rubygems.org/
+gem sources -l
+
+gem install bundler
+bundle config mirror.https://rubygems.org https://ruby.taobao.org
+
+在logstash目录下，vi Gemfile，修改 source 的值 为： "https://ruby.taobao.org"
+
+在bin目录下，./logstash-plugin install logstash-input-jdbc
+
+============================================================
+
+wget https://github.com/logstash-plugins/logstash-input-jdbc/archive/v4.2.4.zip
+unzip master.zip
+
+cd logstash-input-jdbc-master
+
+vi Gemfile，修改 source 的值 为： "https://ruby.taobao.org"
+
+vi logstash-input-jdbc.gemspec
+
+找到 
+    s.files = `git ls-files`.split($\)
+改为：
+    s.files = [".gitignore", "CHANGELOG.md", "Gemfile", "LICENSE", "NOTICE.TXT", "README.md", "Rakefile", "lib/logstash/inputs/jdbc.rb", "lib/logstash/plugin_mixins/jdbc.rb", "logstash-input-jdbc.gemspec", "spec/inputs/jdbc_spec.rb"]
+	
+gem build logstash-input-jdbc.gemspec
+
+mv logstash-input-jdbc-4.2.4.gem /usr/local/logstash/
+
+plugin install logstash-input-jdbc-4.2.4.gem
+
+============================================================
+
+3、启动logstash
+
+在logstash目录中创建一份配置pipeline配置文件，user-access-log-pipeline.conf
+
+input {
+  jdbc {
+    jdbc_driver_library => "/usr/local/mysql-connector-java-5.1.36-bin.jar"
+    jdbc_driver_class => "com.mysql.jdbc.Driver"
+    jdbc_connection_string => "jdbc:mysql://localhost:3306/website"
+    jdbc_user => "root"
+	jdbc_password => "root"
+    schedule => "* * * * *"
+    statement => "SELECT * from user_access_log_aggr"
+  }
+}
+
+output {
+	elasticsearch {
+        hosts => [ "localhost:9200" ]
+    }
+}
+
+运行下面的命令检查配置文件语法是否正确：bin/logstash -f user-access-log-pipeline.conf --config.test_and_exit
+
+启动logstash：bin/logstash -f user-access-log-pipeline.conf --config.reload.automatic
+
+--config.reload.automatic，会自动重新加载配置文件的内容
+
+2310879776

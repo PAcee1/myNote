@@ -1,0 +1,41 @@
+
+第一个项目案例，简单介绍一下，es在国内主要用来做什么呢
+
+其中一个es比较重要的一个应用的领域，就是elk做一些数据分析，比如说将一些网站的用户访问的日志，通过logstash，从apache或者nginx服务器上获取到
+
+然后将那些日志文件通过logstash导入到es中
+
+然后通过kibana对es中的数据，进行分析，生成一些报表
+
+小型流量分析系统
+
+elk课程，所以我这里就不重复讲解elk了，直接默认大家对elk都有一定的认识了，如果需要学习elk，可以去龙果看另外一个讲师的课程
+
+如果我这里重复讲解的话，那么没意思，而且对其他课程并不是太好
+
+logstash，简单来说，就是用来从各种各样的数据源，采集数据，mysql，apache日志，mq，将数据进行一些简单的处理，然后将数据写入到其他的一些地方，比如es，mq
+
+1、下载和解压缩logstash
+
+2、logstash pipeline
+
+两个组成部分：input和output，也可以包含一个可选的filter
+
+input plugin负责从数据源中获取数据
+
+filter plugin负责对数据进行定制化的处理和修改
+
+output plugin负责将数据写入目的地中
+
+3、运行最基础的logstash pipeline
+
+bin/logstash -e 'input { stdin { } } output { stdout {} }'
+
+-e：直接在命令行对logstash进行配置，从命令行接受输入，将输出写入命令行
+
+输入：hello world，可以看到输出，logstash会补充timestamp和ip地址
+
+用ctrl-d可以结束这个piepline
+
+
+2310879776

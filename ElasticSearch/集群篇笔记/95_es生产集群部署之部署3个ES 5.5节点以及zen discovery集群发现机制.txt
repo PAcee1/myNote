@@ -1,0 +1,127 @@
+
+生产环境集群部署
+
+一点一点讲解的，生产环境去部署的时候，涉及到很多的配置，还有牵扯到了很多的es的知识点
+
+我们先下载es 5.5（7月6号为止）的压缩包，部署到3个节点上面去，但是不启动，因为我们接下来要花费很多讲的时间来讲解各种生产环境的参数的配置
+
+es模拟生产环境的3节点的集群给启动起来，停止es进程，curl，kibana
+
+1、在三个节点上都下载es
+
+如果要安装es，首先就要从官网下载es的安装包，并且最新es版本要求有JDK 8以上的版本
+
+es安装包的目录结构大致如下：
+
+bin：存放es的一些可执行脚本，比如用于启动进程的elasticsearch命令，以及用于安装插件的elasticsearch-plugin插件
+conf：用于存放es的配置文件，比如elasticsearch.yml
+data：用于存放es的数据文件，就是每个索引的shard的数据文件
+logs：用于存放es的日志文件
+plugins：用于存放es的插件
+script：用于存放一些脚本文件
+
+2、zen discovery集群发现机制
+
+你会在多台机器上，每台机器部署一个es进程，每台机器都启动一个es进程，你怎么让多台机器上的多个es进程，互相发现对方，然后完美的组成一个生产环境的es集群呢？？？。。。。
+
+默认情况下，es进程会绑定在自己的回环地址上，也就是127.0.0.1，然后扫描本机上的9300~9305端口号，尝试跟那些端口上启动的其他es进程进行通信，然后组成一个集群。这对于在本机上搭建es集群的开发环境是很方便的。但是对于生产环境下的集群是不行的，需要将每台es进程绑定在一个非回环的ip地址上，才能跟其他节点进行通信，同时需要使用集群发现机制来跟其他节点上的es node进行通信。
+
+大家还记不记得，我们如果在windows上自己玩儿的话，是不是说，你直接启动多个es进程，他们自己就会组成一个集群
+
+在生产环境中的多台机器上部署es集群，就涉及到了es的discovery机制，也就是集群中各个节点互相发现然后组成一个集群的机制，同时discovery机制也负责es集群的master选举，关于master，一会儿会讲解s
+
+master node和data node两种角色
+
+es是一种peer to peer，也就是p2p点对点的分布式系统架构，不是hadoop生态普遍采用的那种master-slave主从架构的分布式系统。集群中的每个node是直接跟其他节点进行通信的，而不是hadoop生态系统中的那种master-slave分布式系统架构。几乎所有的API操作，比如index，delete，search，等等，都不是说client跟master通信，而是client跟任何一个node进行通信，那个node再将请求转发给对应的node来进行执行。这块的原理，路由，读写原理，在入门篇都讲解过了。
+
+两个角色，master node，data node。正常情况下，就只有一个master node。master node的责任就是负责维护整个集群的状态信息，也就是一些集群元数据信息，同时在node加入集群或者从集群中下限覅按时，重新分配shard，或者是创建或删除了一个索引。包括每次cluster state如果有改变的化，那么master都会负责将集群状态同步给所有的node。
+
+master node负责接收所有的cluster state相关的变化信息，然后将这个改变后的最新的cluster state推动给集群中所有的data node，集群中所有的node都有一份完整的cluster state。只不过master node负责维护而已。其他的node，除了master之外的node，就是负责数据的存储和读写的，写入索引，搜索数据，data node。
+
+如果要让多个node组成一个es集群，首先第一个要设置的参数，就是cluster.name，多个node的cluster.name如果一样，才满足组成一个集群的基本条件。
+
+这个cluster.name的默认值是elasticsearch，在生产环境中，一定要修改这个值，否则可能会导致未知的node无端加入集群，造成集群运行异常。
+
+而es中默认的discovery机制，就是zen discovery机制
+
+zen discovery机制提供了unicast discovery集群发现机制，集群发现时的节点间通信是依赖的transport module，也就是es底层的网络通信模块和协议。
+
+es默认配置为使用unicast集群发现机制，以让经过特殊配置的节点可以组成一个集群，而不是随便哪个节点都可以组成一个集群。但是默认配置下，unicast是本机，也就是localhost，因此只能在一台机器上启动多个node来组成一个集群。虽然es还是会提供multicast plugin作为一个发现机制，但是已经不建议在生产环境中使用了。虽然我们可能想要multicast的简单性，就是所有的node可以再接收到一条multicast ping之后就立即自动加入集群。但是multicast机制有很多的问题，而且很脆弱，比如网络有轻微的调整，就可能导致节点无法发现对方。因此现在建议在生产环境中用unicast机制，提供一个es种子node作为中转路由节点就可以了。
+
+（0）master node、data node、network.host
+
+给集群规划出专门的master eligible node和data node
+
+master node，master eligible node，data node
+
+你配置的时候，是配置多个node变成master eligible node，但是只是说，从这些master eligible node选举一个node出来作为master node，其他master eligible node只是接下来有那个master node故障的时候，接替他的资格，但是还是作为data node去使用的
+
+一般建议master eligible node给3个即可：node.master: true，node.data: false
+剩下的node都设置为data node：node.master: false，node.data: true
+
+但是如果一个小集群，就10个以内的节点，那就所有节点都可以作为master eligible node以及data node即可，超过10个node的集群再单独拆分master和data node吧
+
+如果你的节点数量小于10个，小集群，那所有的node，就不要做额外的配置了，master eligible node，同时也是data node
+
+默认情况下，es会将自己绑定到127.0.0.1上，对于运行一个单节点的开发模式下的es是ok的。但是为了让节点间可以互相通信以组成一个集群，需要让节点绑定到一个ip地址上，非会换的地址，一般会配置：network.host: 192.168.1.10。一旦我们配置了network.host，那么es就会认为我们从开发模式迁移到生产模式，同时会启用一系列的bootstrap check。
+
+（1）ping
+
+ping是一个node用discovery机制来发现其他node的一个过程
+
+（2）unicast
+
+unicast discovery集群发现机制是要求配置一个主机列表，用来作为gossip（流言式）通信协议的路由器。这些机器如果通过hostname来指定，那么在ping的时候会被解析为ip地址。unicast discovery机制最重要的两个配置如下所示：
+
+hosts：用逗号分割的主机列表
+hosts.resolve_timeout：hostname被DNS解析为ip地址的timeout等待时长
+
+简单来说，如果要让多个节点发现对方并且组成一个集群，那么就得有一个中间的公共节点，然后不同的节点就发送请求到这些公共节点，接着通过这些公共节点交换各自的信息，进而让所有的node感知到其他的node存在，并且进行通信，最后组成一个集群。这就是基于gossip流言式通信协议的unicast集群发现机制。
+
+当一个node与unicast node list中的一个成员通信之后，就会接收到一份完整的集群状态，这里会列出集群中所有的node。接着那个node再通过cluster state跟master通信，并且加入集群中。这就意味着，我们的unicast list node是不需要列出集群中的所有节点的。只要提供少数几个node，比如3个，让新的node可以连接上即可。如果我们给集群中分配了几个节点作为专门的master节点，那么只要列出我们那三个专门的master节点即可。用如下的配置即可：discovery.zen.ping.unicast.hosts: ["host1", "host2:port"]。
+
+cluster.name
+node.name
+network.host
+discovery.zen.ping.unicast.hosts
+
+（1）已经初步配置好了，各个节点，首先通过network.host绑定到了非回环的ip地址，从而可以跟其他节点通信
+（2）通过discovery.zen.ping.unicast.hosts配置了一批unicast中间路由的node
+（3）所有node都可以发送ping消息到路由node，再从路由node获取cluster state回来
+（4）接着所有node会选举出一个master
+（5）所有node都会跟master进行通信，然后加入master的集群
+（6）要求cluster.name必须一样，才能组成一个集群
+（7）node.name就标识出了每个node我们自己设置的一个名称
+
+（3）master选举
+
+在ping发现过程中，为集群选举出一个master也是很重要的，es集群会自动完成这个操作。这里建议设置discovery.zen.ping_timeout参数（默认是3s），如果因为网络慢或者拥塞，导致master选举超时，那么可以增加这个参数，确保集群启动的稳定性。
+
+在完成一个集群的master选举之后，每次一个新的node加入集群，都会发送一个join request到master node，可以设置discovery.zen.join_timeout保证node稳定加入集群，增加join的timeout等待时长，如果一次join不上，默认会重试20次。
+
+如果master node被停止了，或者自己宕机了，那么集群中的node会再次进行一次ping过程，并且选举出一个新的master。如果discovery.zen.master_election.ignore_non_master_pings设置为了true，那么会强制区分master候选节点，如果node的node.master设置为了false，还来发送ping请求参与master选举，那么这些node会被忽略掉，因为他们没有资格参与。
+
+discovery.zen.minimum_master_nodes参数用于设置对于一个新选举的master，要求必须有多少个master候选node去连接那个新选举的master。而且还用于设置一个集群中必须拥有的master候选node。如果这些要求没有被满足，那么master node就会被停止，然后会重新选举一个新的master。这个参数必须设置为我们的master候选node的quorum数量。一般避免说只有两个master候选node，因为2的quorum还是2。如果在那个情况下，任何一个master候选节点宕机了，集群就无法正常运作了。
+
+（4）集群故障的探查
+
+es有两种集群故障探查机制，第一种是通过master进行的，master会ping集群中所有的其他node，确保它们是否是存活着的。第二种，每个node都会去ping master node来确保master node是存活的，否则就会发起一个选举过程。
+
+有下面三个参数用来配置集群故障的探查过程：
+
+ping_interval：每隔多长时间会ping一次node，默认是1s
+ping_timeout：每次ping的timeout等待时长是多长时间，默认是30s
+ping_retries：如果一个node被ping多少次都失败了，就会认为node故障，默认是3次
+
+（5）集群状态更新
+
+master node是集群中唯一一个可以对cluster state进行更新的node。master node每次会处理一个集群状态的更新事件，应用这次状态更新，然后将更新后的状态发布到集群中所有的node上去。每个node都会接收publish message，ack这个message，但是不会应用这个更新。如果master没有在discovery.zen.commit_timeout指定的时间内（默认是30s），从至少discovery.zen.minimum_master_nodes个节点获取ack响应，那么这次cluster state change事件就会被reject，不会应用。
+
+但是一旦在指定时间内，指定数量的node都返回了ack消息，那么cluster state就会被commit，然后一个message会被发送给所有的node。所有的node接收到那个commit message之后，接着才会将之前接收到的集群状态应用到自己本地的状态副本中去。接着master会等待所有节点再次响应是否更新自己本地副本状态成功，在一个等待超时时长内，如果接收到了响应，那么就会继续处理内存queue中保存的下一个更新状态。discovery.zen.publish_timeout默认是30s，这个超时等待时长是从plublish cluster state开始计算的。
+
+（6）不因为master宕机阻塞集群操作
+
+如果要让集群正常运转，那么必须有一个master，还有discovery.zen.minimum_master_nodes指定数量的master候选node，都在运行。discovery.zen.no_master_block可以控制当master当即时，什么样的操作应该被拒绝。有下面两个选项：
+
+all：一旦master当即，那么所有的操作都会被拒绝
+write：这是默认的选项，所有的写操作都会被拒绝，但是读操作是被允许的

@@ -1,0 +1,54 @@
+
+来讲解这个elasticsearch所谓的这些底层Module，有一点点对之前的课程炒冷饭的嫌疑，不是我想要炒冷饭，而是说，之前主要是站在实际使用和运维等等角度去讲解这个es。但是之前讲解的很多功能和特性，参数，实际上都是围绕着es的一些module来的。系统梳理一下es的一些底层module
+
+shard allocation module
+gateway module
+
+http module
+network module
+transport module
+
+我们就讲解http，network，transport三个module最最常用的知识和参数
+
+1、http module
+
+HTTP module就是es的http api模块
+
+http机制是完全异步的，也就是说线程不会因为等待响应而陷入阻塞，http异步通信机制的优点就是解决了C10k问题
+
+如果可能的话，尽量使用http keep alive，可以提升性能，而且可以避免客户端发生http chunking现象
+
+下面是一些常用的http设置
+
+http module，主要是用来对外提供请求接口服务的，我们不是会向es发送一个rest请求，其实就是走es的http module的，其实就是用来处理外部的请求的
+
+http.port，es对外暴露的http api接口的端口号，默认在9200~9300之间选择一个，优先选择9200，如果被绑定，则选择9201，以此类推
+
+我们之前用curl工具，发送http请求，那么其实就是走es的http module，还是http.port设置的http module监听的端口号
+
+默认的话，http.port就是9200，如果9200被占用，那么就会用9201，以此类推，一直到9300
+
+2、network module
+
+es默认是绑定到localhost的，这只能让es运行在开发模式下，如果要运行在生产模式下，下面的一些network设置是必须设置的
+
+network.host：节点绑定的hostname或者ip地址，设置之后，才能进入生产模式下
+
+主要是对一些网络上的基础性的东西进行一个配置
+
+network.host，绑定的是本地的回环地址，127.0.0.1，进入的是development mode，开发模式
+
+如果将network.host，设置为比如192.168.31.187之类的这种hostname或者ip地址之后，进入production mode，生产模式
+
+3、transport module
+
+transport是用来进行节点间的互相通信的模块
+
+transport.tcp.port：用于配置节点间互相通信的端口号，默认是9300，范围在9300~9400之间，优先绑定9300，如果被占用，则用9301，以此类推
+
+transport module，es各个node之间，其实也会进行频繁的通信，比如交换cluster state，reqeust transfer，比如插入一条document，路由之后，应该是到node3的shard2上去处理，但是请求可能发送到的是node1的shard0上，node1就要将这个document index的请求转发给node3，让node3上的shard2去处理这个请求
+
+默认transport.tcp.port端口号是9300，如果被占用，那么就会用9301，一直到9400，以此类推
+
+
+

@@ -1,0 +1,153 @@
+
+1、mapping管理
+
+put mapping命令可以让我们给一个已有的索引添加一个新的type，或者修改一个type，比如给某个type加一些字段
+
+下面这个命令是在创建索引的时候，直接跟着创建一个type
+
+curl -XPUT 'http://elasticsearch02:9200/twitter?pretty' -d ' 
+{
+  "mappings": {
+    "tweet": {
+      "properties": {
+        "message": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}'
+
+下面这个命令是给一个已有的索引添加一个type
+
+curl -XPUT 'http://elasticsearch02:9200/twitter/_mapping/user?pretty' -d ' 
+{
+  "properties": {
+    "name": {
+      "type": "text"
+    }
+  }
+}'
+
+下面这个命令是给一个已有的type添加一个field
+
+curl -XPUT 'http://elasticsearch02:9200/twitter/_mapping/tweet?pretty' -d '
+{
+  "properties": {
+    "user_name": {
+      "type": "text"
+    }
+  }
+}'
+
+curl -XGET 'http://elasticsearch02:9200/twitter/_mapping/tweet?pretty'，上面这行命令可以查看某个type的mapping映射信息
+curl -XGET 'http://elasticsearch02:9200/twitter/_mapping/tweet/field/message?pretty'，这行命令可以看某个type的某个field的映射信息
+
+mapping管理是运维中，索引管理中，很基础的一块
+
+2、索引别名管理
+
+curl -XPOST 'http://elasticsearch02:9200/_aliases?pretty' -d '
+{
+    "actions" : [
+        { "add" : { "index" : "twitter", "alias" : "twitter_prod" } }
+    ]
+}'
+
+curl -XPOST 'http://elasticsearch02:9200/_aliases?pretty' -d '
+{
+    "actions" : [
+        { "remove" : { "index" : "twitter", "alias" : "twitter_prod" } }
+    ]
+}'
+
+POST /_aliases
+{
+    "actions" : [
+        { "remove" : { "index" : "test1", "alias" : "alias1" } },
+        { "add" : { "index" : "test2", "alias" : "alias1" } }
+    ]
+}
+
+POST /_aliases
+{
+    "actions" : [
+        { "add" : { "indices" : ["test1", "test2"], "alias" : "alias1" } }
+    ]
+}
+
+上面是给某个index添加和删除alias的命令，还有重命名alias的命令（先删除再添加），包括将一个alias绑定多个index
+
+POST /_aliases
+{
+    "actions" : [
+        {
+            "add" : {
+                 "index" : "test1",
+                 "alias" : "alias2",
+                 "filter" : { "term" : { "user" : "kimchy" } }
+            }
+        }
+    ]
+}
+
+DELETE /logs_20162801/_alias/current_day
+
+GET /_alias/2016
+
+索引别名，还是挺有用的，主要是什么呢，就是说，可以将一个索引别名底层挂载多个索引，比如说7天的数据
+
+索引别名常常和之前讲解的那个rollover结合起来，我们为了性能和管理方便，每天的数据都rollover出来一个索引，但是在对数据分析的时候，可能是这样子的，有一个索引access-log，指向了当日最新的数据，用来计算实时数据的; 有一个索引access-log-7days，指向了7天的7个索引，可以让我们进行一些周数据的统计和分析。
+
+3、index settings管理
+
+curl -XPUT 'http://elasticsearch02:9200/twitter/_settings?pretty' -d '
+{
+    "index" : {
+        "number_of_replicas" : 1
+    }
+}'
+
+curl -XGET 'http://elasticsearch02:9200/twitter/_settings?pretty'
+
+经常可能要对index做一些settings的调整，常常和之前的index open和close结合起来
+
+4、index template管理
+
+我们可以定义一些index template，这样template会自动应用到新创建的索引上去。template中可以包含settings和mappings，还可以包含一个pattern，决定了template会被应用到哪些index上。而且template仅仅在index创建的时候会被应用，修改template，是不会对已有的index产生影响的。
+
+curl -XPUT 'http://elasticsearch02:9200/_template/template_access_log?pretty' -d '
+{
+  "template": "access-log-*",
+  "settings": {
+    "number_of_shards": 2
+  },
+  "mappings": {
+    "log": {
+      "_source": {
+        "enabled": false
+      },
+      "properties": {
+        "host_name": {
+          "type": "keyword"
+        },
+        "created_at": {
+          "type": "date",
+          "format": "EEE MMM dd HH:mm:ss Z YYYY"
+        }
+      }
+    }
+  },
+  "aliases" : {
+      "access-log" : {}
+  }
+}'
+
+curl -XDELETE 'http://elasticsearch02:9200/_template/template_access_log?pretty'
+
+curl -XGET 'http://elasticsearch02:9200/_template/template_access_log?pretty'
+
+curl -XPUT 'http://elasticsearch02:9200/access-log-01?pretty'
+curl -XGET 'http://elasticsearch02:9200/access-log-01?pretty'
+
+index template，可能是这样子的，就是你可能会经常创建不同的索引，比如说商品，分成了多种，每个商品种类的数据都很大，可能就是说，一个商品种类一个索引，但是每个商品索引的设置是差不多的，所以干脆可以搞一个商品索引模板，然后每次新建一个商品种类索引，直接绑定到模板，引用相关的设置

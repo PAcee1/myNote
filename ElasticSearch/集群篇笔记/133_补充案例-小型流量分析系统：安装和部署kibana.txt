@@ -1,0 +1,29 @@
+
+1、下载kibana
+
+从kibana官网下载，并且解压缩
+
+./bin/kibana，即可运行kibana，用ctrl+c可以终止kibana进程
+
+2、配置kibana
+
+在$KIBANA_HOME/config/kibana.yml文件中可以对kibana进行配置
+
+server.port
+server.host
+elasticsearch.url
+
+3、访问kibana web管理工作台
+
+默认通过5601端口进行访问，通过浏览器访问即可
+
+4、设置index pattern
+
+我们需要为kibana配置一个index pattern来匹配es中的索引名称，默认是logstash-*，匹配logstash写入es中的数据
+
+同时还要配置一个time-field name，那个field是timestamp类型的，这是给kibana用来按照时间进行过滤的，kibana会自动加载出来给我们选择
+
+
+
+
+2310879776

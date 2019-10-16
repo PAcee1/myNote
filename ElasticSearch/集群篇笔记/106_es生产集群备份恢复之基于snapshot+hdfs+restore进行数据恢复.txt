@@ -1,0 +1,77 @@
+
+1、基于snapshot的数据恢复
+
+正经备份，一般来说，是在一个shell脚本里，你用crontab做一个定时，比如每天凌晨1点，就将所有的数据做一次增量备份，当然，如果你的数据量较大，每小时做一次也ok。shell脚本里，就用curl命令，自动发送一个snapshot全量数据的请求。那么这样的话，就会自动不断的去做增量备份。
+
+20170721，做了一次snapshot，snapshot_20170721
+20170722，又做了一次snapshot，snapshot_20170722
+
+这两次snapshot是有关联关系的，因为第二次snapshot是基于第一次snapshot的数据，去做的增量备份
+
+如果你要做数据恢复，比如说，你自己误删除，不小心将整个index给删除掉了，数据丢了，很简单，直接用最新的那个snapshot就可以了，比如snapshot_20170722
+
+如果，你是做了一些错误的数据操作，举个例子，今天你的程序有个bug，写入es中的数据都是错误的，需要清洗数据，重新导入
+
+这个时候，虽然最新的snapshot_20170722，但是也可以手动选择snapshot_20170721 snapshot，去做恢复，相当于是将数据恢复到20170721号的数据情况，忽略掉20170722号的数据的变更
+
+然后重新去导入数据
+
+如果我们用一些脚本定期备份数据之后，那么在es集群故障，导致数据丢失的时候，就可以用_restore api进行数据恢复了。比如下面这行命令：POST _snapshot/my_hdfs_repository/snapshot_1/_restore。这个时候，会将那个snapshot中的所有数据恢复到es中来，如果snapshot_1中包含了5个索引，那么这5个索引都会恢复到集群中来。不过我们也可以选择要从snapshot中恢复哪几个索引。
+
+我们还可以通过一些option来重命名索引，恢复索引的时候将其重命名为其他的名称。在某些场景下，比如我们想恢复一些数据但是不要覆盖现有数据，然后看一下具体情况，用下面的命令即可恢复数据，并且进行重命名操作：
+
+POST /_snapshot/my_hdfs_repository/snapshot_1/_restore
+{
+    "indices": "index_1", 
+	"ignore_unavailable": true,
+	"include_global_state": true,
+    "rename_pattern": "index_(.+)", 
+    "rename_replacement": "restored_index_$1" 
+}
+
+index_01
+restores_index_01
+
+这个restore过程也是在后台运行的，如果要在前台等待它运行完，那么可以加上wait_for_completion flag：POST _snapshot/my_backup/snapshot_1/_restore?wait_for_completion=true。
+
+?wait_for_completion=true，包括之前讲解的备份，也是一样的，对运维中的自动化shell脚本，很重要，你的shell脚本里，要比如等待它备份完成了以后，才会去执行下一条命令
+
+restore过程只能针对已经close掉的index来执行，而且这个index的shard还必须跟snapshot中的index的shard数量是一致的。restore操作会自动在恢复好一个index之后open这个index，或者如果这些index不存在，那么就会自动创建这些index。如果通过include_global_state存储了集群的state，还会同时恢复一些template。
+
+默认情况下，如果某个索引在恢复的时候，没有在snapshot中拥有所有的shard的备份，那么恢复操作就会失败，比如某个shard恢复失败了。但是如果将partial设置为true，那么在上述情况下，就还是可以进行恢复操作得。不过在恢复之后，会自动重新创建足够数量的replica shard。
+
+此外，还可以在恢复的过程中，修改index的一些设置，比如下面的命令：
+
+POST /_snapshot/my_backup/snapshot_1/_restore
+{
+  "indices": "index_1",
+  "index_settings": {
+    "index.number_of_replicas": 0
+  },
+  "ignore_index_settings": [
+    "index.refresh_interval"
+  ]
+}
+
+curl -XDELETE 'http://elasticsearch02:9200/my_index?pretty'
+curl -XGET 'http://elasticsearch02:9200/my_index/my_type/1'
+curl -XPOST 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1/_restore?pretty'
+curl -XGET 'http://elasticsearch02:9200/my_index/my_type/1'
+
+解释一下，为什么大家会发现，我们这次集群运维的课程，会大量的用curl命令来操作，作为es集群管理员的话，有的时候可能还是要用curl命令，特别是可能要封装一些自动化的shell脚本，去做一些es的运维操作，比如自动定时备份
+
+可能你要做一次恢复，连带执行很多es的运维命令，可以提前封装一个shell脚本，大量的就是要用curl命令
+
+2、监控restore的进度
+
+从一个仓库中恢复数据，其实内部机制跟从其他的node上恢复一个shard是一样的。如果要监控这个恢复的过程，可以用recovery api，比如：GET restored_index_3/_recovery。如果要看所有索引的恢复进度：GET /_recovery/。可以看到恢复进度的大致的百分比。结果大致如下所示：
+
+curl -XGET 'http://elasticsearch02:9200/my_index/_recovery?pretty'
+
+3、取消恢复过程
+
+如果要取消一个恢复过程，那么需要删除已经被恢复到es中的数据。因为一个恢复过程就只是一个shard恢复，发送一个delete操作删除那个索引即可，比如：DELETE /restored_index_3。如果那个索引正在被恢复，那么这个delete命令就会停止恢复过程，然后删除已经恢复的 所有数据。
+
+curl -XDELETE 'http://elasticsearch02:9200/my_index'
+
+

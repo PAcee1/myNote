@@ -1,0 +1,67 @@
+
+threadpool module，也是有一些内容要讲解的哦，这个module主要是用来干什么的呢。。。
+
+每个es节点内部多有很多个thread pool，不同的thread pool会处理不同的请求，thread pool module就是用来对各种各样的thread pool进行管理的
+
+每种thread pool都是绑定了一个queue的，因为thread pool的大小是有限的，比如一个thread pool内部就是10个线程，那么此时如果10个线程都被耗尽了，在执行某项任务，此时新的请求要这个thread pool中的线程来处理，会怎么样？默认情况下，肯定就惨了，因为没有线程处理了，可能就会报错了。。。。
+
+那么但是es的thread pool都是绑定了一个内存中的队列的，queue，如果thread pool满了之后，请求可以进这个queue里面来排队，等待线程池出现空的线程来处理queue中的请求，这样的话呢，就提供了一个buffer
+
+不至于说，在业务高峰期，大量的报错，因为线程池可能满了，至少用queue缓冲一下，也许请求会因为在queue中等待，执行的慢了一些，但是至少是不会报错，可以执行的s
+
+1、线程池
+
+每个节点都有多个thread pool，这样可以提升多线程处理的能力，这些线程池大多数都有一个对应的queue与其绑定，可以允许线程池满的时候，让pending的请求在队列里排队，而不是将pending请求抛弃掉
+
+generic thread pool：应付一些普通的操作，比如后台的node discovery，thread pool类型是scaling
+
+index thread pool：用于进行index和delete操作，是fixed类型，大小为cpu core数量，queue大小是200，这个线程池的最大大小是cpu core数量 + 1
+
+search thread pool：用于search操作，是fixed类型，大小是cpu core数量 * 3 / 2 + 1，queue大小是1000
+
+get thread pool：用于get操作，是fixed类型，大小是cpu core数量，队列大小是1000
+
+bulk thread pool：用于bulk操作，是fixed类型，大小是cpu core数量，queue大小是200，最大的线程池大小是cpu core数量 + 1
+
+snapshot thread pool：用于snapshot/restore操作，是scaling类型，每个线程存活时间为5m，最大数量是min(5, cpu core数量 / 2)
+
+refresh thread pool：用于refresh操作，是scaling类型，存活时间为5m，最大数量是min(10, cpu core数量 / 2)
+
+用下面的方式来修改thread pool
+
+正好给大家新鲜出炉的一个案例，在我进行这个运维这块课程升级之前，就有之前的学员，在实际的项目中，碰到一个case，就是执行bulk操作的时候，说线程池不够了，建议增加queue的数量，bulk thread pool，做一下设置
+
+在elasticsearch.yml配置文件中，按照下面的格式来进行配置
+
+thread_pool:
+    bulk:
+        size: 16
+        queue_size: 1000
+
+2、线程池类型
+
+fixed类型线程池：线程数量是固定的，同时绑定一个queue用于存放pending request
+
+scaling类型：这种线程池数量是可变的，根据负载来变化，最小是cpu core数量，最大是其公式定义，keep_alive参数可以控制其线程空闲多长时间被释放
+
+thread_pool:
+    refresh:
+        core: 1
+        max: 8
+        keep_alive: 2m
+
+
+3、cpu core数量设置
+
+在elasticsearch.yml配置文件中去设置的
+
+processors: 2
+
+通过上面的参数可以显示设置cpu core数量，意义有下面3点：
+
+（1）如果在一台机器上运行了多个es节点，但是可能只想要让每个es节点使用部分cpu core，而不是物理机上的所有cpu core，就可以手动设置。比如一台物理机，上面的cpu core是16个，运行了两个es节点，此时就可以手动设置processors是8，就是让每个es节点仅仅使用8个cpu core
+
+（2）默认cpu core的数量最大限制为32个，所以如果我们如果物理机超过了32个cpu core，那么可以手动设置。比如说你的物理机的cpu core是64个，但是此时es会去使用的cpu core可能也就32个，最大限制，此时就是要手动设置processors是64。
+
+（3）有时候可能会捕获到错误的cpu core数量，此时需要手动设置
+

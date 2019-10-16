@@ -1,0 +1,199 @@
+
+1、创建索引
+
+（1）创建索引的语法
+
+用settings给这个索引在创建时可以添加一些设置，还有可以初始化一些type的mapping
+
+curl -XPUT 'http://elasticsearch02:9200/twitter?pretty' -d '
+{
+    "settings" : {
+        "index" : {
+            "number_of_shards" : 3, 
+            "number_of_replicas" : 2 
+        }
+    },
+    "mappings" : {
+        "type1" : {
+            "properties" : {
+                "field1" : { "type" : "text" }
+            }
+        }
+    }
+}'
+
+（2）索引创建返回消息的解释
+
+默认情况下，索引创建命令会在每个primary shard的副本开始进行复制以后，或者是请求超时以后，返回一个响应消息，类似下面这样的。其中acknowledged表明了这个索引有没有创建成功，shards_acknowledged表明了每个primary shard有没有足够数量的replica开始进行复制了。有可能这两个参数会为false，但是索引依然可以创建成功。因为这些参数仅仅是表明在请求超时之前，那两个行为有没有成功，也有可能请求超时了，在超时前都没成功，但是超时后在es server端还是都执行了。如果acknoledged是false，那么就可能是超时了，此时接受到响应消息的时候，cluster state都还没变更，没有加入新创建的index，但是也许之后还是会创建这个index。如果shards_acknowledged是false，那么可能在primary shard进行副本copy之前，就timeout了，但是此时也许index创建成功了，而且cluster state已经加入了新创建的index。
+
+{
+    "acknowledged": true,
+    "shards_acknowledged": true
+}
+
+2、删除索引
+
+curl -XDELETE 'http://elasticsearch02:9200/twitter?pretty'
+
+删除索引中的一个type
+
+3、查询索引设置信息
+
+curl -XGET 'http://elasticsearch02:9200/twitter?pretty'
+
+4、打开/关闭索引
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_close?pretty'
+curl -XPOST 'http://elasticsearch02:9200/twitter/_open?pretty'
+
+curl -XPUT 'http://elasticsearch02:9200/twitter/type1/1?pretty' -d '
+{
+	"field1": "1"
+}'
+
+如果关闭了一个索引之后，那么这个索引是不会带来任何的性能开销了，只要保留这个索引的元数据即可，然后对这个索引的读写操作都不会成功。一个关闭的索引可以接着再打开，打开以后会进行shard recovery过程。
+
+比如说你在做一些运维操作的时候，现在你要对某一个索引做一些配置，运维操作，修改一些设置，关闭索引，不允许写入，成功以后再打开索引
+
+5、压缩索引
+
+shrink命令可以将一个已有的索引压缩成一个新的索引，同时primary shard会更少。因为以前提到过，primary shard因为涉及到document的hash路由问题，所以是不允许修改的。但是如果要减少index的primary shard，可以用shrink命令来压缩index。但是压缩后的shard数量必须可以被原来的shard数量整除。举例来说，一个有8个primary shard的index可以被压缩成4个，2个，或者1个primary shard的index。
+
+压缩索引，是这样啊，如果你的索引中本来比如是要保留7天的数据，那么给了10个shard，但是现在需求变了，这个索引只要保留3天的数据就可以了，那么数据量变小了，就不需要10个shard了，就可以做shrink操作，5个shard。
+
+shrink命令的工作流程如下：
+
+（1）首先，它会创建一个跟source index的定义一样的target index，但是唯一的变化就是primary shard变成了指定的数量
+（2）接着它会将source index的segment file直接用hard-link的方式连接到target index的segment file，如果操作系统不支持hard-link，那么就会将source index的segment file都拷贝到target index的data dir中，会很耗时。如果用hard-link会很快
+（3）最后，会将target index进行shard recovery恢复
+
+如果要shrink index，那么这个index必须先被标记为read only，而且这个index的每个shard的某一个copy，可以是primary或者是replica，都必须被复制到一个节点上去。默认情况下，index的每个shard有可能在不同机器上的，比如说，index有5个shard，shard0和shard1在机器1上，shard2、shard3在机器2上，shard4在机器3上。现在还得把shard0，shard1，shard2，shard3，shard4全部拷贝到一个同一个机器上去，但是可以是shard0的replica shard。而且每个primary shard都必须存在。可以通过下面的命令来完成。其中index.routing.allocation.require._name必须是某个node的名称，这个都是可以自己设置的。
+
+curl -XPUT 'http://elasticsearch02:9200/twitter/_settings?pretty' -d '
+{
+  "settings": {
+    "index.routing.allocation.require._name": "node-elasticsearch-02", 
+    "index.blocks.write": true 
+  }
+}'
+
+这个命令会花费一点时间将source index每个shard的一个copy都复制到指定的node上去，可以通过GET _cat/recovery?v命令来追踪这个过程的进度。
+
+等上面的shard copy relocate过程结束之后，就可以shrink一个index，用下面的命令即可：POST my_source_index/_shrink/my_target_index。如果target index被添加进了cluster state之后，这个命令就会立即返回，不是等待shrink过程完成之后才返回的。当然还可以用下面的命令来shrink的时候修改target index的设置，在settings里就可以设置target index的primary shard的数量。
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_shrink/twitter_shrinked?pretty' -d '
+{
+  "settings": {
+    "index.number_of_replicas": 1,
+    "index.number_of_shards": 1, 
+    "index.codec": "best_compression" 
+  }
+}'
+
+当然也是需要监控整个shrink的过程的，用GET _cat/recovery?v即可。
+
+6、rollover index
+
+rollover命令可以将一个alias重置到一个新的索引上去，如果已经存在的index被认为太大或者数据太旧了。这个命令可以接收一个alias名称，还有一系列的condition。如果索引满足了condition，那么就会创建一个新的index，同时alias会指向那个新的index。比如下面的命令。举例来说，有一个logs-0000001索引，给了一个别名是logs_write，接着发起了一个rollover的命令，如果logs_write别名之前指向的那个index，也就是logs-0000001，创建了超过7天，或者里面的document已经超过了1000个了，然后就会创建一个logs-000002的索引，同时logs_write别名会指向新的索引。
+
+这个命令其实是很有用的，特别是针对这种用户访问行为日志的数据，或者是一些联机事务系统的数据的进入，你可以写一个shell脚本，每天0:00的时候就执行以下rollover命令，此时就判断，如果说之前的索引已经存在了超过1天了，那么此时就创建一个新的索引出来，同时将别名指向新的索引。自动去滚动创建新的索引，保持每个索引就只有一个小时，一天，七天，三天，一周，一个月。
+
+类似用es来做日志平台，就可能分布式电商平台，可能订单系统的日志，单独的一个索引，要求的是保留最近3天的日志就可以了。交易系统的日志，是单独的一个索引，要求的是保留最近30天的日志。
+
+curl -XPUT 'http://elasticsearch02:9200/logs-000001?pretty' -d ' 
+{
+  "aliases": {
+    "logs_write": {}
+  }
+}'
+
+# Add > 1000 documents to logs-000001
+
+curl -XPUT 'http://elasticsearch02:9200/logs-000001/data/1?pretty' -d '
+{
+	"userid": 1,
+	"page": 1
+}'
+curl -XPUT 'http://elasticsearch02:9200/logs-000001/data/2?pretty' -d '
+{
+	"userid": 2,
+	"page": 2
+}'
+curl -XPUT 'http://elasticsearch02:9200/logs-000001/data/3?pretty' -d '
+{
+	"userid": 3,
+	"page": 3
+}'
+
+curl -XPOST 'http://elasticsearch02:9200/logs_write/_rollover?pretty' -d ' 
+{
+  "conditions": {
+    "max_age":   "1d",
+    "max_docs":  3
+  }
+}'
+
+{
+  "acknowledged": true,
+  "shards_acknowledged": true,
+  "old_index": "logs-000001",
+  "new_index": "logs-000002",
+  "rolled_over": true, 
+  "dry_run": false, 
+  "conditions": { 
+    "[max_age: 7d]": false,
+    "[max_docs: 1000]": true
+  }
+}
+
+这个过程常见于网站用户行为日志数据，比如按天来自动切分索引，写个脚本定时去执行rollover，就会自动不断创建新的索引，但是别名永远是一个，对于外部的使用者来说，用的都是最新数据的索引。
+
+举一个简单的例子，这块是怎么玩儿的，比如说用es做网站的实时用户行为分析，要求的是一个索引只要保留当日的数据就可以了，那么就可以用这个rollover的策略，确保每个索引都是包含当日的最新数据的。老的数据，就变成别的索引了，此时可以写一个shell脚本，删除旧的数据，这样的话，es里就保留当前最新的数据就可以了。也可以根据你的需求，就保留最近7天的数据，但是最新一天的数据在一个索引中，供分析查询使用。
+
+默认情况下，如果已经存在的那个索引是用-符号加上一个数字结尾的，比如说logs-000001，那么新索引的名称就会是自动给那个数字加1，比如logs-000002，自动就是给一个6位的数字，而且会自动补零。但是我们也可以自己指定要的新的索引名称，比如下面这样：
+
+POST /my_alias/_rollover/my_new_index_name
+{
+  "conditions": {
+    "max_age":   "7d",
+    "max_docs":  1000
+  }
+}
+
+可以将rollover命令和date日期结合起来使用，比如下面的例子，先创建了一个logs-2016.10.31-1格式的索引。接着每次如果成功rollover了，那么如果是在当天rollover了多次，那就是当天的日期，末尾的数字递增。如果是隔天才rollover，会自动变更日期，同时维护末尾的数字序号。
+
+PUT /%3Clogs-%7Bnow%2Fd%7D-1%3E 
+{
+  "aliases": {
+    "logs_write": {}
+  }
+}
+
+PUT logs_write/log/1
+{
+  "message": "a dummy log"
+}
+
+POST logs_write/_refresh
+
+# Wait for a day to pass
+
+POST /logs_write/_rollover 
+{
+  "conditions": {
+    "max_docs":   "1"
+  }
+}
+
+当然，还可以在rollover的时候，给新的index进行新的设置：
+
+POST /logs_write/_rollover
+{
+  "conditions" : {
+    "max_age": "7d",
+    "max_docs": 1000
+  },
+  "settings": {
+    "index.number_of_shards": 2
+  }
+}

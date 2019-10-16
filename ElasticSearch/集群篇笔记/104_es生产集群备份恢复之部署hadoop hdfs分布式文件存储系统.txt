@@ -1,0 +1,80 @@
+
+hadoop hdfs是什么的同学，简单的介绍，不会花太多时间，hadoop当前大数据领域的事实上的一个标准
+
+hadoop hdfs，提供的是分布式的文件存储，数据存储
+hadoop yarn，提供的是分布式的资源调度
+hadoop mapreduce，提供的是分布式的计算引擎，跑在yarn上面的，由yarn去做资源调度
+hadoop hive，提供的是分布式的数据仓库引擎，基于mapreduce
+hadoop hbase，提供的是分布式的NoSQL数据库，基于hdfs去做的
+
+1、使用课程提供的hadoop-2.7.1.tar.gz，使用WinSCP上传到CentOS的/usr/local目录下。
+2、将hadoop包进行解压缩：tar -zxvf hadoop-2.7.1.tar.gz
+3、对hadoop目录进行重命名：mv hadoop-2.7.1 hadoop
+4、配置hadoop相关环境变量
+vi .bashrc
+export HADOOP_HOME=/usr/local/hadoop
+export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+source .bashrc
+5、在/usr/local目录下创建data目录
+
+6、修改配置文件
+
+core-site.xml
+
+<property>
+  <name>fs.defaultFS</name>
+  <value>hdfs://elasticsearch01:9000</value>
+</property>
+
+hdfs-site.xml
+
+<property>
+  <name>dfs.namenode.name.dir</name>
+  <value>/usr/local/data/namenode</value>
+</property>
+<property>
+  <name>dfs.datanode.data.dir</name>
+  <value>/usr/local/data/datanode</value>
+</property>
+
+yarn-site.xml
+
+<property>
+  <name>yarn.resourcemanager.hostname</name>
+  <value>elasticsearch01</value>
+</property>
+
+mapred-site.xml
+
+<property>
+  <name>mapreduce.framework.name</name>
+  <value>yarn</value>
+</property>
+
+slaves
+
+elasticsearch01
+elasticsearch02
+elasticsearch03
+
+在另外两台机器上部署
+
+1、使用scp命令将elasticsearch01上面的hadoop安装包和.bashrc配置文件都拷贝过去。
+2、要记得对.bashrc文件进行source，以让它生效。
+3、记得在另外两台机器的/usr/local目录下创建data目录。
+
+启动hdfs集群
+
+su elasticsearch
+chown -R elasticsearch /usr/local/hadoop
+chown -R elasticsearch /usr/local/data
+
+1、格式化namenode：在elasticsearch01上执行以下命令hdfs namenode -format
+2、启动hdfs集群：start-dfs.sh
+3、验证启动是否成功：jps、50070端口
+elasticsearch01：namenode、datanode、secondarynamenode
+elasticsearch02：datanode
+elasticsearch03：datanode
+
+
+

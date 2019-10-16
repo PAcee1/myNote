@@ -1,0 +1,93 @@
+
+1、circuit breaker
+
+es有很多的断路器，也就是circuit breaker，可以用来阻止各种操作导致OOM内存溢出。每个断路器都有一个限制，就是最多可以使用多少内存。此外，还有一个父断路器指定了所有断路器最多可以使用多少内存。
+
+（1）父短路器
+
+indices.breaker.total.limit，可以配置父短路器的最大内存限制，默认是jvm heap内存的70%
+
+（2）fielddata短路器
+
+field data短路器可以估算每一个field的所有数据被加载到内存中，需要耗费多大的内存。这个短路器可以组织field data加载到jvm内存时发生OOM问题。默认的值是jvm heap的60%。indices.breaker.fielddata.limit，可以用这个参数来配置。indices.breaker.fielddata.overhead，可以配置估算因子，估算出来的值会乘以这个估算因子，留一些buffer，默认是1.03。
+
+（3）request circuit breaker
+
+request circuit breaker会阻止每个请求对应的一些数据结构造成OOM，比如一个聚合请求可能会用jvm内存来做一些汇总计算。indices.breaker.request.limit，最大是jvm heap的60%。indices.breaker.request.overhead，估算因子，默认是1.
+
+（4）in flight request circuit breaker
+
+flight request circuit breaker可以限制当前所有进来的transport或http层的请求超出一个节点的内存总量，这个内存的使用量就是请求自己本身的长度。network.breaker.inflight_requests.limit，默认是jvm heap的100%。network.breaker.inflight_requests.overhead，估算因子，默认是1.
+
+（5）script compilation circuit breaker
+
+这个短路器可以阻止一段时间内的inline script编译的数量。script.max_compilations_per_minute，默认是1分钟编译15个。
+
+2、fielddata
+
+fielddata cache，在对field进行排序或者聚合的时候，会用到这个cache。这个cache会将所有的field value加载到内存里来，这样可以加速排序或者聚合的性能。但是每个field的field data cache的构建是很成本很高昂的，因此建议给机器提供充足的内存来保持fielddata cache。
+
+indices.fielddata.cache.size，这个参数可以控制这个cache的大小，可以是30%这种相对大小，或者是12GB这种绝对大小，默认是没有限制的。
+
+fielddata的原理之前讲解过了，其实是对分词后的field进行排序或者聚合的时候，才会使用fielddata这种jvm内存数据结构。如果是对普通的未分词的field进行排序或者聚合，其实默认是用的doc value数据结构，是在os cache中缓存的。
+
+3、node query cache
+
+query cache用来缓存query的结果，每个node都有一个query cache，使用的是LRU策略，会自动清理数据。但是query cache仅仅会对那些filter后的数据进行缓存，对search后的数据是不会进行缓存的。indices.queries.cache.size，控制query cache的大小，默认是jvm heap的10%。
+
+如果只是要根据一些field进行等值的查询或过滤，那么用filter操作，性能会比较好，query cache
+
+4、index buffer
+
+index buffer用来存储最新索引的的document。如果这个buffer满了之后，document就会被写入一个segment file，但是此时其实是写入os cache中，没有用fsync同步到磁盘，这就是refresh过程，写入os cache中，就可以被搜索到了。然后flush之后，就fsync到了磁盘上。indices.memory.index_buffer_size，控制index buffer的大小，默认是10%。indices.memory.min_index_buffer_size，buffer的最小大小，默认是48mb。
+
+index buffer，增删改document，数据先写入index buffer，写到磁盘文件里面去，不可见的，refresh刷入磁盘文件对应的os cache里面，还有translog一份数据
+
+5、shard request cache
+
+对于分布式的搜索请求，相关的shard都会去执行搜索操作，然后返回一份结果集给一个coordinate node，由那个coordinate node来执行最终的结果合并与计算。shard request cache会缓存每个shard的local result。那么对于频繁请求的数据，就可以直接从cache中获取了。与query cache不同的是，query cache只是针对filter的，但是shard request cache是针对所有search和聚合求的。
+
+默认情况下，shard request cache仅仅会针对size=0的搜索来进行缓存，仅仅会缓存hits.total，聚合结果等等汇总结果，而不会缓存搜索出来的hits明细数据。
+
+cache是很智能的，如果cache对应的doc数据被refresh，也就是修改了，那么cache就会自动失效。如果cache满了的话，也会自动用LRU算法来清理掉cache中的数据。
+
+可以手动来启用和禁用cache：
+
+PUT /my_index
+{
+  "settings": {
+    "index.requests.cache.enable": false
+  }
+}
+
+在每个request中也可以手动启用或禁用cache：
+
+GET /my_index/_search?request_cache=true
+{
+  "size": 0,
+  "aggs": {
+    "popular_colors": {
+      "terms": {
+        "field": "colors"
+      }
+    }
+  }
+}
+
+但是默认对于size>0的request的结果是不会被cache的，即使在index设置中启用了request cache也不行。只有在请求的时候，手动加入reqeust cache参数，才可以对size>0的请求进行result cache。
+
+缓存用的key，是完整的请求json，因此每次请求即使json中改变了一点点，那么也无法复用上次请求的request cache结果。
+
+indices.requests.cache.size，可以设置request cache大小，默认是1%
+
+GET /_stats/request_cache?human，监控request cache的使用
+
+如果是search，默认是不缓存的，除非你手动打开request_cache=true，在发送请求的时候
+如果是aggr，默认是缓存的，不手动打开request_cache=true，也会缓存聚合的结果
+
+6、索引恢复
+
+indices.recovery.max_bytes_per_sec，每秒可以恢复的数据量，默认是40mb
+
+
+

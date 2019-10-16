@@ -1,0 +1,191 @@
+
+1、es集群数据备份
+
+任何一个存储数据的软件，都需要定期的备份我们的数据。es replica提供了运行时的高可用保障机制，可以容忍少数节点的故障和部分数据的丢失，但是整体上却不会丢失任何数据，而且不会影响集群运行。但是replica没法进行灾难性的数据保护，比如说机房彻底停电，所有机器全部当即，等等情况。对于这种灾难性的故障，我们就需要对集群中的数据进行备份了，集群中数据的完整备份。
+
+要备份集群数据，就要使用snapshot api。这个api会将集群当前的状态和数据全部存储到一个外部的共享目录中去，比如NAS，或者hdfs。而且备份过程是非常智能的，第一次会备份全量的数据，但是接下来的snapshot就是备份两次snapshot之间的增量数据了。数据是增量进入es集群或者从es中删除的，那么每次做snapshot备份的时候，也会自动在snapshot备份中增量增加数据或者删除部分数据。因此这就意味着每次增量备份的速度都是非常快的。
+
+如果要使用这个功能，我们需要有一个预先准备好的独立于es之外的共享目录，用来保存我们的snapshot备份数据。es支持多种不同的目录类型：shared filesystem，比如NAS；Amazon S3；hdfs；Azure Cloud。不过对于国内的情况而言，其实NAS应该很少用，一般来说，就用hdfs会比较多一些，跟hadoop这种离线大数据技术栈整合起来使用。
+
+2、创建备份仓库
+
+（1）创建和查询仓库的命令
+
+PUT _snapshot/my_backup 
+{
+    "type": "fs", 
+    "settings": {
+        "location": "/mount/backups/my_backup" 
+    }
+}
+
+这里用了shared filesystem作为仓库类型，包括了仓库名称以及仓库类型是fs，还有仓库的地址。这个里面就包含了仓库的一些必要的元数据了。可能还有其他的一些参数可以配置，主要是基于我们的node和网络的性能来配置。max_snapshot_bytes_per_sec，这个参数用于指定数据从es灌入仓库的时候，进行限流，默认是20mb/s。max_restore_bytes_per_sec，这个参数用于指定数据从仓库中恢复到es的时候，进行限流，默认也是20mb/s。假如说网络是非常快速的，那么可以提高这两个参数的值，可以加快每次备份和恢复的速度，比如下面：
+
+POST _snapshot/my_backup/ 
+{
+    "type": "fs",
+    "settings": {
+        "location": "/mount/backups/my_backup",
+        "max_snapshot_bytes_per_sec" : "50mb", 
+        "max_restore_bytes_per_sec" : "50mb"
+    }
+}
+
+创建一个仓库之后，就可以查看这个仓库的信息了：GET /_snapshot/my_backup，或者是查看所有的仓库，GET /_snapshot/_all。可能返回如下的信息：
+
+{
+  "my_backup": {
+    "type": "fs",
+    "settings": {
+      "compress": true,
+      "location": "/mount/backups/my_backup"
+    }
+  }
+}
+
+（2）基于hdfs创建仓库
+
+但是其实如果在国内使用es的话，还是建议跟hadoop生态整合使用，不要用那种shared filesystem。可以用hadoop生态的hdfs分布式文件存储系统。首先先要安装repository-hdfs的插件：bin/elasticsearch-plugin install repository-hdfs，必须在每个节点上都安装，然后重启整个集群。
+
+kill -SIGTERM 15516
+
+su elasticsearch
+elasticsearch -d -Epath.conf=/etc/elasticsearch
+
+curl -XGET elasticsearch02:9200/_cat/nodes?v
+
+在3个hdfs node上，都加入hdfs-site.xml，禁止权限检查，如果要修改这个配置文件，要先在/usr/local/hadoop/sbin，运行./stop-dfs.sh，停止整个hdfs集群，然后在3个node上，都修改hdfs-site.xml，加入下面的配置，禁止权限的检查
+
+<property>
+  <name>dfs.permissions</name>
+  <value>false</value>
+</property>
+
+hdfs snapshot/restore plugin是跟最新的hadoop 2.x整合起来使用的，目前是hadoop 2.7.1。所以如果我们使用的hadoop版本跟这个es hdfs plugin的版本不兼容，那么考虑在hdfs plugin的文件夹里，将hadoop相关jar包都替换成我们自己的hadoop版本对应的jar包。即使hadoop已经在es所在机器上也安装了，但是为了安全考虑，还是应该将hadoop jar包放在hdfs plugin的目录中。
+
+安装好了hdfs plugin之后，就可以创建hdfs仓库了，用如下的命令即可：
+
+curl -XGET 'http://localhost:9200/_count?pretty' -d '
+{
+    "query": {
+        "match_all": {}
+    }
+}
+'
+
+curl -XPUT 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository2' -d '
+{
+  "type": "hdfs",
+  "settings": {
+    "uri": "hdfs://elasticsearch02:9000/",
+    "path": "elasticsearch/respositories/my_hdfs_repository",
+	"conf.dfs.client.read.shortcircuit": "false",
+	"max_snapshot_bytes_per_sec" : "50mb", 
+    "max_restore_bytes_per_sec" : "50mb"
+  }
+}'
+
+（3）验证仓库
+
+在课程演示中，最好都是用root用户去演示，一般来说就够了，因为在不同的公司里，你可能linux用户管理，权限，都不太一样
+
+专门去建一套用户和授权去演示，不太合适
+
+如果一个仓库被创建好之后，我们可以立即去验证一下这个仓库是否可以在所有节点上正常使用。verify参数都可以用来做这个事情，比如下面的命令。这个命令会返回一个node列表，证明那些node都验证过了这个仓库是ok的，可以使用的
+
+curl -XPOST 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/_verify'
+
+先停止整个es集群，然后在3个节点上，都加入下面的配置，然后用elasticsearch账号重启整个es集群
+
+/usr/local/elasticsearch/plugins/repository-hdfs/plugin-security.policy
+
+  permission java.lang.RuntimePermission "accessDeclaredMembers";
+  permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "shutdownHooks";
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  permission javax.security.auth.AuthPermission "doAs";
+  permission javax.security.auth.AuthPermission "getSubject";
+  permission javax.security.auth.AuthPermission "modifyPrivateCredentials";
+  permission java.security.AllPermission;
+  permission java.util.PropertyPermission "*", "read,write";
+  permission javax.security.auth.PrivateCredentialPermission "org.apache.hadoop.security.Credentials * \"*\"", "read";
+  
+/usr/local/elasticsearch/config/jvm.options  
+
+-Djava.security.policy=file:////usr/local/elasticsearch/plugins/repository-hdfs/plugin-security.policy
+
+3、对索引进行snapshotting备份
+
+（1）对所有open的索引进行snapshotting备份
+
+一个仓库可以包含多分snapshot，每个snapshot是一部分索引的备份数据，创建一份snapshot备份时，我们要指定要备份的索引。比如下面这行命令：PUT _snapshot/my_hdfs_repository/snapshot_1，这行命令就会将所有open的索引都放入一个叫做snapshot_1的备份，并且放入my_backup仓库中。这个命令会立即返回，然后备份操作会被后台继续进行。如果我们不希望备份操作以后台方式运行，而是希望在前台发送请求时等待备份操作执行完成，那么可以加一个参数即可，比如下面这样：PUT _snapshot/my_backup/snapshot_1?wait_for_completion=true。
+
+curl -XPUT 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1'
+
+（2）对指定的索引进行snapshotting备份
+
+默认的备份是会备份所有的索引，但是有的时候，可能我们不希望备份所有的索引，有些可能是不重要的数据，而且量很大，没有必要占用我们的hdfs磁盘资源，那么可以指定备份少数重要的数据即可。此时可以使用下面的命令去备份指定的索引：
+
+PUT _snapshot/my_backup/snapshot_2
+{
+    "indices": "index_1,index_2",
+	"ignore_unavailable": true,
+	"include_global_state": false,
+	"partial": true
+}
+
+ignore_unavailable如果设置为true的话，那么那些不存在的index就会被忽略掉，不会进行备份过程中。默认情况下，这个参数是不设置的，那么此时如果某个index丢失了，会导致备份过程失败。设置include_global_state为false，可以阻止cluster的全局state也作为snapshot的一部分被备份。默认情况下，如果某个索引的部分primary shard不可用，那么会导致备份过程失败，那么此时可以将partial设置为true。
+
+而且snapshotting的过程是增量进行的，每次执行snapshotting的时候，es会分析已经存在于仓库中的snapshot对应的index file，然后仅仅备份那些自从上次snapshot之后新创建的或者有过修改的index files。这就允许多个snapshot在仓库中可以用一种紧凑的模式来存储。而且snapshotting过程是不会阻塞所有的es读写操作的，然而，在snapshotting开始之后，写入index中的数据，是不会反应到这次snapshot中的。每次snapshot除了创建一份index的副本之外，还可以保存全局的cluster元数据，里面包含了全局的cluster设置和template。
+
+每次只能执行一次snapshot操作，如果某个shard正在被snapshot备份，那么这个shard此时就不能被移动到其他node上去，这会影响shard rebalance的操作。只有在snapshot结束之后，这个shard才能够被移动到其他的node上去。
+
+4、查看snapshot备份列表
+
+一旦我们在仓库中备份了一些snapshot之后，就可以查看这些snapshot相关的详细信息了，使用这行命令就可以查看指定的snapshot的详细信息：GET _snapshot/my_backup/snapshot_2，结果大致如下所示。当然也可以查看所有的snapshot列表，GET _snapshot/my_backup/_all。
+
+curl -XGET 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1?pretty'
+
+{
+  "snapshots" : [
+    {
+      "snapshot" : "snapshot_1",
+      "uuid" : "x8DXcrp2S0md-BC9ftYZqw",
+      "version_id" : 5050099,
+      "version" : "5.5.0",
+      "indices" : [
+        "my_index"
+      ],
+      "state" : "SUCCESS",
+      "start_time" : "2017-07-08T19:54:54.914Z",
+      "start_time_in_millis" : 1499543694914,
+      "end_time" : "2017-07-08T19:54:56.886Z",
+      "end_time_in_millis" : 1499543696886,
+      "duration_in_millis" : 1972,
+      "failures" : [ ],
+      "shards" : {
+        "total" : 5,
+        "failed" : 0,
+        "successful" : 5
+      }
+    }
+  ]
+}
+
+5、删除snapshot备份
+
+如果要删除过于陈旧的snapshot备份快照，那么使用下面这行命令即可：DELETE _snapshot/my_backup/snapshot_2。记住，一定要用api去删除snapshot，不要自己手动跑到hdfs里删除这个数据。因为snapshot是增量的，有可能很多snapshot依赖于底层的某一个公共的旧的snapshot segment。但是delete api是理解数据如何增量存储和互相依赖的，所以可以正确的删除那些不用的数据。如果我们自己手工进行hdfs文件删除，可能导致我们的backup数据破损掉，就无法使用了。
+
+curl -XDELETE 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1'
+
+6、监控snapshotting的进度
+
+使用wait_for_completion可以在前台等待备份完成，但是实际上也没什么必要，因为可能要备份的数据量特别大，难道还等待1个小时？？看着是不太现实的，所以一般还是在后台运行备份过程，然后使用另外一个监控api来查看备份的进度，首先可以获取一个snapshot ID：GET _snapshot/my_backup/snapshot_3。如果这个snapshot还在备份过程中，此时我们就可以看到一些信息，比如什么时候开始备份的，已经运行了多长时间，等等。然而，这个api用了跟snapshot一样的线程池去执行，如果我们在备份非常大的shard，进度的更新可能会非常之慢。一个更好的选择是用_status API，GET _snapshot/my_backup/snapshot_3/_status，这个api立即返回最详细的数据。这里我们可以看到总共有几个shard在备份，已经完成了几个，还剩下几个，包括每个索引的shard的备份进度：
+
+curl -XGET 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1'
+
+7、取消snapshotting备份过程
+
+如果我们想要取消一个正在执行的snapshotting备份过程，比如我们发现备份时间过于长，希望先取消然后在晚上再运行，或者是因为不小心误操作发起了一次备份操作，这个时候就可以运行下面这条命令：DELETE _snapshot/my_backup/snapshot_3。也就是立即删除这个snapshot，这个命令会去取消snapshot的过程，同时将备份了一半的仓库中的数据给删除掉。
+
+curl -XDELETE 'http://elasticsearch02:9200/_snapshot/my_hdfs_repository/snapshot_1'

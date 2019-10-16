@@ -1,0 +1,44 @@
+10 * 60 * 1000
+
+用最简单的方式装一个mysql数据库，然后后面的话，就有数据库可以用来开发了
+
+wget http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
+rpm -ivh mysql-community-release-el7-5.noarch.rpm
+yum install -y mysql-community-server
+
+service mysqld restart
+
+mysql -u root 
+
+set password for 'root'@'localhost' =password('password');
+
+datekey cookie section userid province city pv is_return_visit is_bounce_visit visit_time visit_page_cnt
+
+日期    cookie 版块    用户id 省份     城市 pv 是否老用户回访  是否跳出        访问时间   访问页面数量
+
+create table user_access_log_aggr (
+  datekey varchar(255),
+  cookie varchar(255),
+  section varchar(255),
+  userid int,
+  province varchar(255),
+  city varchar(255),
+  pv int,
+  is_return_visit int,
+  is_bounce_visit int,
+  visit_time int,
+  visit_page_cnt int
+)
+
+insert into user_access_log_aggr values('20171001', 'dasjfkaksdfj33', 'game', 1, 'beijing', 'beijing', 10, 0, 1, 600000, 3);
+insert into user_access_log_aggr values('20171001', 'dasjadfssdfj33', 'game', 2, 'jiangsu', 'nanjing', 5, 0, 0, 700000, 5);
+insert into user_access_log_aggr values('20171001', 'dasjffffksfj33', 'sport', 1, 'beijing', 'beijing', 8, 1, 0, 800000, 6);
+insert into user_access_log_aggr values('20171001', 'dasjdddksdfj33', 'sport', 2, 'jiangsu', 'nanjing', 20, 0, 1, 900000, 7);
+insert into user_access_log_aggr values('20171001', 'dasjeeeksdfj33', 'sport', 3, 'jiangsu', 'nanjing', 30, 1, 0, 600000, 10);
+insert into user_access_log_aggr values('20171001', 'dasrrrrksdfj33', 'news', 3, 'jiangsu', 'nanjing', 40, 0, 0, 600000, 12);
+insert into user_access_log_aggr values('20171001', 'dasjtttttdfj33', 'news', 4, 'shenzhen', 'shenzhen', 50, 0, 1, 500000, 4);
+insert into user_access_log_aggr values('20171001', 'dasjfkakkkfj33', 'game', 4, 'shenzhen', 'shenzhen', 20, 1, 0, 400000, 3);
+insert into user_access_log_aggr values('20171001', 'dasjyyyysdfj33', 'sport', 5, 'guangdong', 'guangzhou', 10, 0, 0, 300000, 1);
+insert into user_access_log_aggr values('20171001', 'dasjqqqksdfj33', 'news', 5, 'guangdong', 'guangzhou', 9, 0, 1, 200000, 2);
+
+2310879776

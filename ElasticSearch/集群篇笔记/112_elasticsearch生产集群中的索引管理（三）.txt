@@ -1,0 +1,116 @@
+
+1、indice stat
+
+indice stat对index上发生的不同类型的操作都提供了统计。这个api提供了index level的统计信息，不过大多数统计信息也可以从node level获取。
+
+curl -XGET 'http://elasticsearch02:9200/twitter/_stats?pretty'
+
+这里包括了doc数量，index size，segment的内存使用量，merge，flush，refresh，translog等底层机制的统计信息。
+
+2、segment
+
+查看low level的lucene的segment信息，可以用来查看shard和index的更多的信息，包括一些优化信息，因为delete而浪费的数据空间，等等。
+
+curl -XGET 'http://elasticsearch02:9200/twitter/_segments?pretty'
+
+{
+    ...
+        "_3": {
+            "generation": 3,
+            "num_docs": 1121,
+            "deleted_docs": 53,
+            "size_in_bytes": 228288,
+            "memory_in_bytes": 3211,
+            "committed": true,
+            "search": true,
+            "version": "4.6",
+            "compound": true
+        }
+    ...
+}
+
+_3，是segment的名称，这个名称跟这个segment files的文件名有关系，一个segment的所有文件都是用这个名称开头的
+
+generation：每次新生成一个segment，就会递增一个数值，segment名称也就是这个数值
+
+num_docs：在这个segment中存储的没有被删除的document的数量
+
+deleted_docs：在这个segment中存储的被删除的document数量，这个数值是无所谓的，因为每次segment merge的时候都会删除这些document
+
+size_in_bytes：这个segment占用的磁盘空间
+
+memory_in_bytes：segment需要将一些数据缓存在内存中，这样搜索性能才能更高，这个数值就是segment占用的内存的空间大小
+
+committed：segment是否被sync到磁盘上去了，commit/sync的segment可以确保数据不会丢失，但是即使这个值是false也不要紧，因为数据同时被存储在了translog里面，es进程重启的时候，是可以重放translog中的日志来恢复数据的
+
+search：这个segment能不被搜索，如果是false的话，可能这个segment已经被sync到磁盘上，但是还没有进行refresh，所以不能被搜索
+
+version：lucene的版本号
+
+compound：如果是true的话，意味着lucene将这个segment所有的文件都merge成了一个文件，进而可以节省file descriptor的消耗
+
+3、shard存储信息
+
+查询索引shard copy的存储信息，可以看到哪些节点上有哪些shard copy，shard copy的allocation id，每个shard copy的唯一标识，包括打开索引的时候遇到的报错。默认情况下，会显示至少有一个未分配的copy的shard，如果cluster health是yellow，会显示至少有一个未分配的replica的shard，当cluster health是red，会显示有未分配的primary的shard。但是用status=green可以看到每个shard的信息。
+
+curl -XGET 'http://elasticsearch02:9200/twitter/_shard_stores?pretty'
+curl -XGET 'http://elasticsearch02:9200/twitter/_shard_stores?status=green&pretty'
+
+{
+    ...
+   "0": { 
+        "stores": [ 
+            {
+                "sPa3OgxLSYGvQ4oPs-Tajw": { 
+                    "name": "node_t0",
+                    "transport_address": "local[1]",
+                    "attributes": {
+                        "mode": "local"
+                    }
+                },
+                "allocation_id": "2iNySv_OQVePRX-yaRH_lQ", 
+                "legacy_version": 42, 
+                "allocation" : "primary" | "replica" | "unused", 
+                "store_exception": ... 
+            },
+            ...
+        ]
+   },
+    ...
+}
+
+0：shard id
+
+stores：shard的每个copy的store信息
+
+sPa3OgxLSYGvQ4oPs-Tajw：node id，持有一个copy的node信息
+
+allocationi_id：copy的allocationid
+
+allocation：shard copy的角色
+
+4、clear cache
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_cache/clear?pretty'，这个命令可以清空所有的缓存
+
+5、flush
+
+flush API可以让我们去强制flush多个索引，索引flush以后，就会释放掉这个索引占用的内存，因为会将os cache里的数据强制fsync到磁盘上去，同时还会清理掉translog中的日志。默认情况下，es会不定时自动触发flush操作，以便于及时清理掉内存。POST twitter/_flush，这条命令即可。
+
+flush命令可以接受下面两个参数，wait_if_going，如果设置为true，那么flush api会等到flush操作执行完以后再返回，即使需要等待其他的flush操作先完成。默认的值是false，这样的话，如果有其他flush操作在执行，就会报错；force，如果没有必要flush的话，是不是会强制一个flush
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_flush?pretty'
+
+6、refresh
+
+refresh用来显式的刷新一个index，这样可以让这个refresh之前执行的所有操作，都处于可见的状态。POST twitter/_refresh
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_refresh?pretty'
+
+7、force merge
+
+force merge API可以强制合并多个索引文件，可以将一个shard对应的lucene index的多个segment file都合并起来，可以减少segment file的数量。POST /twitter/_forcemerge。
+
+curl -XPOST 'http://elasticsearch02:9200/twitter/_forcemerge?pretty'
+
+

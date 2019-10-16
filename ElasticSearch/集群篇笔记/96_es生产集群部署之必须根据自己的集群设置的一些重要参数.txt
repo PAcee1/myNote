@@ -1,0 +1,102 @@
+
+1、es的默认参数
+
+es的默认参数是非常好的，适合绝大多数的情况，尤其是一些性能相关的配置。因此刚开始部署一个生产环境下的es集群时，几乎所有的配置参数都可以用默认的设置。有很多的生产环境场景下，都是因为es集群管理人员自己去调整es的某些配置，结果导致集群出现了严重的故障，那些es集群管理员甚至还以为做出那些调节可以将es性能提升一百倍以上。
+
+比如mysql或者oracle这种关系型数据库，也许是需要非常重的调优，但是es是真的不用。如果我们现在面临着一些es的性能问题，通常建议的解决方案是更好的进行数据结构的布局，或者增加更多的节点和机器资源。在es的性能调优中，真的很少有那种magic knobs，就是某个参数一调节，直接性能提升上百倍。即使有这种参数，es官方也早就将其设置为默认的最佳值了。
+
+但是在生产环境中，还是有极少数跟公司和业务相关的配置是需要我们修改的。这些设置都是具体的公司和业务相关联的，是没法预先给予最好的默认配置的。
+
+2、集群名称和节点名称
+
+默认情况下，es会启动一个名称为elasticsearch的集群。通常建议一定要将自己的集群名称重新进行命名，主要是避免公司网络环境中，也许某个开发人员的开发机会无意中加入你的集群。比如说将你的集群名称命名为elasticsearch_production。在elasticsearch.yml中，可以设置集群名称：cluster.name: elasticsearch_production。
+
+此外，每个node启动的时候，es也会分配一个随机的名称。这个也不适合在生产环境中，因为这会导致我们没法记住每台机器。而且每次重启节点都会随机分配，就导致node名称每次重启都会变化。因此通常我们在生产环境中是需要给每个node都分配一个名称的。在elasticsearch.yml中配置即可：node.name: elasticsearch_005_data。
+
+3、文件路径
+
+（1）数据目录、日志目录以及插件目录
+
+默认情况下，es会将plugin，log，还有data ，config，file都放在es的安装目录中。这有一个问题，就是在进行es升级的时候，可能会导致这些目录被覆盖掉。导致我们丢失之前安装好的plugin，已有的log，还有已有的数据，以及配置好的配置文件。
+
+所以一般建议在生产环境中，必须将这些重要的文件路径，都重新设置一下，放在es安装目录之外。path.data用于设置数据文件的目录，path.logs用于设置日志文件的目录，path.plugins用于设置插件存放的目录。path.data可以指定多个目录，用逗号分隔即可。如果多个目录在不同的磁盘上，那么这就是一个最简单的RAID 0的方式，将数据在本地进行条带化存储了，可以提升整体的磁盘读写性能。es会自动将数据在多个磁盘的多个目录中条带化存储数据。
+
+一般建议的目录地址是：
+
+mkdir -p /var/log/elasticsearch
+mkdir -p /var/data/elasticsearch
+mkdir -p /var/plugin/elasticsearch
+mkdir -p /etc/elasticsearch
+
+path.logs: /var/log/elasticsearch
+path.data: /var/data/elasticsearch
+path.plugins: /var/plugin/elasticsearch
+
+config：/etc/elasticsearch
+
+在RAID 0的存储级别下，每个磁盘上回存储一部分数据，但是如果一个磁盘故障了，那么可能导致这台机器上的部分数据就丢失了。如果我们的es是有replica的，那么在其他机器上还是会有一份副本的。如果data file指定了多个目录，为了尽量减少数据丢失的风险，es会将某个shard的数据都分配到一个磁盘上去。这就意味着每个shard都仅仅会放在一个磁盘上。es不会将一个shard的数据条带化存储到多个磁盘上去，因为如果一个磁盘丢失了，就会导致整个shard数据丢失。
+
+但是这又引入了性能的问题，如果我们给一个机器添加更多的磁盘来提升单个索引的读写性能，是没有效果的。因为这个索引在这个机器上的shard仅仅存在于一个磁盘上。因此data file指定多个目录，仅仅对于你的一台机器上存储了多个index的多个shard时，才会有效果的。因为不同index的shard可能就被存储到不同的磁盘上去了，对多个index的shard读写可以走不同磁盘，提升了性能。
+
+虽然multiple data path是一个很有用的功能，但是es毕竟不是一个专门的RAID软件。如果我们要对RAID存储策略进行更多的配置，提高存储的健壮性以及灵活性，还是要用专门的RAID软件来进行机器的磁盘数据存储，而不是用multiple data path策略。
+
+综上所述，multiple data path功能在实际的生产环境中，其实是较少使用的。
+
+（2）配置文件目录
+
+es有两个配置文件，elasticsearch.yml，用于配置es，还有一个log4j.properties用来配置es日志打印。这些文件都被放在config目录下，默认就是ES_HOME/config。可以通过下面的命令来重新设置：./bin/elasticsearch -Epath.conf=/path/to/my/config/。
+
+配置文件的格式是yaml格式的，比如下面这种格式：
+
+path:
+    data: /var/lib/elasticsearch
+    logs: /var/log/elasticsearch
+	
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+4、日志配置
+
+es使用log4j2来记录日志，log4j2可以通过log4j2.properties文件来进行配置。比如下面的这份配置文件：
+
+appender.rolling.type = RollingFile 
+appender.rolling.name = rolling
+appender.rolling.fileName = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}.log 
+appender.rolling.layout.type = PatternLayout
+appender.rolling.layout.pattern = [%d{ISO8601}][%-5p][%-25c] %.10000m%n
+appender.rolling.filePattern = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}-%d{yyyy-MM-dd}.log 
+appender.rolling.policies.type = Policies
+appender.rolling.policies.time.type = TimeBasedTriggeringPolicy 
+appender.rolling.policies.time.interval = 1 
+appender.rolling.policies.time.modulate = true 
+
+appender.rolling.type = RollingFile，就配置了appender类型是RollingFile
+
+appender.rolling.fileName = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}.log，就配置了日志路径是/var/log/elasticsearch/production.log
+
+appender.rolling.filePattern = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}-%d{yyyy-MM-dd}.log，就配置了将日志每天写一份到/var/log/elasticsearch/production-2017-01-01.log文件中
+
+appender.rolling.policies.time.type = TimeBasedTriggeringPolic，这里配置了用基于时间的roll策略
+
+appender.rolling.policies.time.interval = 1，这个设置了每天一份日志文件
+
+appender.rolling.policies.time.modulate = true，这个设置了根据自然天来划分文件，而不是24小时
+
+还可以配置将日志文件保留一段时间内，同时删除之前的日志文件
+
+appender.rolling.strategy.type = DefaultRolloverStrategy 
+appender.rolling.strategy.action.type = Delete 
+appender.rolling.strategy.action.basepath = ${sys:es.logs.base_path} 
+appender.rolling.strategy.action.condition.type = IfLastModified 
+appender.rolling.strategy.action.condition.age = 7D 
+appender.rolling.strategy.action.PathConditions.type = IfFileName 
+appender.rolling.strategy.action.PathConditions.glob = ${sys:es.logs.cluster_name}-* 
+
+第一行是配置了默认的DefaultRolloverStrategy
+第二行是配置了Delete action，在rollover之后，就会删除文件
+第三行是配置了es log的基础路径
+第四行是配置了rollover发生的条件，是基于IfLastModified
+第五行是配置了保留的天数，这里是7天
+第六行是配置了删除匹配7天前的文件
+第七行是配置了一个删除文件的格式，这样就只是删除过期日志文件，但是不要删除慢查询日志
+

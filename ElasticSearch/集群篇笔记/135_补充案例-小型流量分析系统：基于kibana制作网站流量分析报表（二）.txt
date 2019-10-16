@@ -1,0 +1,33 @@
+
+对指定的版块进行查询，然后统计出如下指标的汇总
+
+pv: 所有人的pv相加
+uv: 对userid进行去重
+total_visit_time: 总访问时长
+return_visit_uv: 回访uv
+bounce_visit_uv: 跳出次数
+
+curl -XGET 'http://localhost:9200/logstash-2017.10.14/logs/_search?q=section:news&pretty' -d '
+{
+    "size": 0,
+    "aggs": {
+      "pv": {"sum": {"field": "pv"}},
+      "uv": {"cardinality": {"field": "userid", "precision_threshold": 40000}},
+      "total_visit_time": {"sum": {"field": "visit_time"}},
+      "return_visit_uv": {
+        "filter": {"term": {"is_return_visit": 1}},
+        "aggs": {
+          "total_return_visit_uv": {"cardinality": {"field": "userid", "precision_threshold": 40000}}
+        }
+      },
+      "bounce_visit_uv": {
+        "filter": {"term": {"is_bounce_visit": 1}},
+        "aggs": {
+          "total_bounce_visit_uv": {"cardinality": {"field": "userid", "precision_threshold": 40000}}
+        }
+      }
+    }
+}'
+
+
+2310879776

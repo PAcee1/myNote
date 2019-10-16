@@ -1,0 +1,205 @@
+
+跟大家解释一下，大家可能会发现，最近几讲，好像有一点点务虚，因为很少实操，大量的是解释和讲解
+
+主要还是运维相关的底层知识，为什么说实操比较少，涉及到的很多参数，不太好设置，需要做到一些知识储备
+
+1、shard allocation的介绍
+
+两种node：master node，data node
+
+master node的一个很重要的功能，比如说，你现在创建了一个索引，然后这个索引是不是有很多的shard，可能你自己指定了几个primary shard，每个primary shard还有一些replica shard。master node，其实就是决定哪些shard分配给哪些node，以及什么时候在node之间移动shard，来让集群达到rebalance。对于shard allocation而言，有很多设置，都可以控制这个过程：
+
+（1）cluster level shard allocation，可以在集群层面来控制shard allocation和rebalance的过程
+（2）disk-based shard allocation，es会在shard分配的时候，考虑可用的磁盘空间
+（3）shard allocation awareness，控制shard如何在不同的机架上进行分布
+（4）shard allocation filter，可以控制有些node不参与allocation的过程，这样的话，这些node就可以被安全的下线
+
+2、cluster level shard allocation
+
+shard allocation，就是将shard分配给node的一个过程，这个过程可能会在集群启动初始化进行恢复的时候发生，也会发生在replica shard被分配的时候，集群进行rebalance的时候，或者是有新的node加入，有旧的node被下线的时候。
+
+（1）shard allocation settings
+
+cluster.routing.allocation.enable
+
+all，默认，对所有类型的shard都允许分配
+primaries，仅仅允许primary shard被分配
+new_primaries，仅仅对新建索引的primary shard允许分配
+none，不允许任何shard被分配
+
+但是这个配置对node重启时本地primary shard的恢复没有影响，重启node的时候，如果本地有一个未被分配的primary shard，还是会立即恢复这个primary shard。
+
+cluster.routing.allocation.node_concurrent_incoming_recoveries：在一个node上允许同时恢复多少个shard，这里的shard recovery过程，指的就是要将某个shard分配给这个node。这个设置的默认值是2.
+
+cluster.routing.allocation.node_concurrent_outgoing_recoveries：一个node上允许同时进行多少个shard recovery outgoing，比如这个node上，有一个primary shard，现在要将replica shard分配给其他的node，那么就是outgoing shard recovery。默认值也是2.
+
+cluster.routing.allocation.node_concurrent_recoveries：同时设置上面两个值
+
+cluster.routing.allocation.node_initial_primaries_recoveries：如果replica shard recovery通过网络传输来分配，那么一个未被分配的primary shard会在node重启之后使用本地磁盘上的数据，这个过程因为是使用本地的数据，因此会比较快，默认值是4.
+
+*****：cluster.routing.allocation.same_shard.host：默认值是false，如果设置为true，那么就不允许将一个primary shard和replica shard分配到同一个物理机上，也许这个物理机上启动了多个es实例。
+
+有可能你有一台超级服务器，32核CPU+128G内存，这个时候的话呢，可能你在这台机器上启动两个es进程，但是默认情况下，有可能一个shard的primary shard被分配到了这台物理机上的node1，同时这个primary shard的replica shard被分配到了这台物理机上的node2，此时，primary shard和replica shard就在同一台物理机上了。
+
+可用性是比较低的，因为如果这台物理机挂掉了，比较惨烈了，primary shard和replica shard全部丢失
+
+（2）shard rebalance settings
+
+rebalance，什么意思，比如说你的集群，有5台机器，一共有100个shard，负载均衡的情况下，平均分配一下呢，每个机器上有20个shard。然后此时加入了一台新机器，6台机器了，此时就要触发rebalance操作，重新让整个集群负载均衡，100 / 6 = 16~17个shard每台机器
+
+如果下线一台机器的话。。。
+
+cluster.routing.rebalance.enable
+
+all，默认，允许对所有类型的shard进行rebalance过程
+primaries，仅仅允许对primary shard进行rebalance过程
+replicas，仅仅允许对replica shard进行rebalance
+none，不允许对任何shard进行rebalance
+
+cluster.routing.allocation.allow_rebalance
+
+always，任何时候都允许rebalance
+indices_primaries_active，仅仅只有在所有的primary shard都被分配之后才允许rebalance
+indices_all_active，默认，仅仅允许所有的primary shard和replica shard都被分配之后，才能rebalance
+
+cluster.routing.allocation.cluster_concurrent_rebalance
+
+允许控制多少个shard rebalance的操作同时运行，默认是2
+
+（3）shard balance heuristics
+
+cluster.routing.allocation.balance.shard：设置每个node的shard分配的权重因子，默认是0.45f，提高权重因子，就会尽可能让均匀的shard分配给集群中的所有node
+
+cluster.routing.allocation.balance.index：定义每个index在一个node上的shard数量因子，默认是0.55f，提高这个参数，就会尽可能让每个index的shard均匀分配到所有的node上
+
+cluster.routing.allocation.balance.threshold：默认是1.0f，提高这个权重因子会导致集群对shard balance有更小的侵略性
+
+3、disk-based shard allocation
+
+es在进行shard allocation的时候，会充分考虑每一个node的可用磁盘空间
+
+cluster.routing.allocation.disk.threshold_enabled：默认是true，如果是false会禁用基于disk的考虑
+
+cluster.routing.allocation.disk.watermark.low：控制磁盘使用率的低水位，默认是85%，如果一个节点的磁盘空间使用率已经超过了85%，那么就不会分配shard给这个node了
+
+cluster.routing.allocation.disk.watermark.high：控制磁盘使用率的高水位，默认是90%，如果一个节点的磁盘空间使用率已经超过90%了，那么就会将这个node上的部分shard移动走
+
+cluster.info.update.interval：es检查集群中每个node的磁盘使用率的时间间隔，默认是30s
+
+cluster.routing.allocation.disk.include_relocations：默认是true，意味着es在计算一个node的磁盘使用率的时候，会考虑正在分配给这个node的shard。
+
+4、shard allocation awareness
+
+（1）机架感知特性
+
+如果在一个物理机上运行多个虚拟机，并且在多个虚拟机中运行了多个es节点，或者在多个机架上，多个机房，都有可能有多个es节点在相同的物理机上，或者在相同的机架上，或者在相同的机房里，那么这些节点就可能会因为物理机，机架，机房的问题，一起崩溃
+
+如果es可以感知到硬件的物理布局，就可以确保说，priamry shard和replica shard一定是分配到不同的物理机，或者物理机架，或者不同的机房，这样可以最小化物理机，机架，机房崩溃的风险
+
+shard allocation awareness可以告诉es我们的硬件架构
+
+举哥例子，如果我们有多个机架，那么我们启动一个node的时候，就要告诉这个node它在哪个机架上，可以给它一个rack_id，比如下面的命令：./bin/elasticsearch -Enode.attr.rack_id=rack_one，也可以在elasticsearch.yml中设置这个机架id
+
+cluster.routing.allocation.awareness.attributes: rack_id
+node.attr.rack_id=rack_one
+
+上面的两行设置里，第一行是设置机架id的属性名称，第二行是用那个机架id属性名称设置具体的机架id
+
+如果启动两个node，都在一个机架上，此时创建一个有5个primary shard和5个replica shard的索引，此时shards会被分配到两个节点上
+
+如果再启动两个node，设置为另外一个机架，此时es会将shard移动到新的node上，去确保说，不会让primary shard和其replica shard在同一个机架上。但是如果机架2故障了，为了恢复集群，那么还是会在恢复的时候，将shards全部在机架1上分配的
+
+prefer local shard机制：在执行search或者get请求的时候，如果启用了shard awareness特性，那么es会尽量使用local shard来执行请求，也就是在同一个awareness group中的shard来执行请求，也就是说尽量用一个机架或者一个机房中的shard来执行请求，而不要跨机架或者跨机房来执行请求
+
+可以指定多个awareness属性，比如机架id和机房名称，类似下面：cluster.routing.allocation.awareness.attributes: rack_id,zone
+
+（2）强制性的感知
+
+如果现在我们有两个机房，并且有足够的硬件资源来容纳所有的shard，但是可能每个机房的硬件只能容纳一半shard，不能容纳所有的shard。如果仅仅使用原始的感知特性，如果一个机房故障了，那么es会将需要恢复的shard全部分配给剩下的一个机房，但是剩下的那个机房的硬件资源并不足以容纳所有的shard。
+
+强制感知特性会解决这个问题，因为这个特性会绝对不允许在一个机房内分配所有的shard
+
+比如说，有一个感知属性叫做zone，有两个机房，zone1和zone2，看看下面的配置：
+
+cluster.routing.allocation.awareness.attributes: zone
+cluster.routing.allocation.awareness.force.zone.values: zone1,zone2 
+
+那么此时如果将2个node分配给zone1机房，然后创建一个索引，5个primary shard和5个replica shard，但是此时只会在zone1机房分配5个primary shard，只有我们启动一批node在zone2机房，才会分配replica shard
+
+5、shard allocation filtering
+
+shard allocation filtering可以让我们允许或者不允许某些index的shard分配给一些特殊的节点，典型的用途，就是如果我们要下线一些node，就可以用这个feature禁止shard分配给这些即将下线的node，而且我们还可以将这些即将下线的节点的shard移动到其他节点。
+
+用下面的命令可以下线一个节点，因为就不允许将shard分配给这个节点了
+
+PUT _cluster/settings
+{
+  "transient" : {
+    "cluster.routing.allocation.exclude._ip" : "10.0.0.1"
+  }
+}
+
+6、node下线时的shard延迟分配
+
+如果从集群中下线一个节点，master会做下面这些事情：
+
+（1）如果那个节点上有primary shard，那么master会将那些primary shard在其他节点上的replica shard提升为primary shard
+（2）分配新的replica shard来保证replica数量充足
+（3）在剩下的各个node上进行shard rebalance，确保负载均衡
+
+这些操作可以保护集群不会丢失数据，因为会对每个shard都复制充足的replica shard
+
+但是这个过程，可能会导致集群中出现很重的负载，包括网络负载和磁盘IO负载，如果那个下线的节点只是因为故障被下线，马上就会有新的节点来顶替它，那么这种立即执行的shard recovery过程是不需要的，考虑下面的场景：
+
+（1）某个node跟集群丢失了网络连接
+（2）master node将那个node上的primary shard对应的其他节点上的replica shard提升为primary shard
+（3）master node分配新的replica shard到其他节点上
+（4）每个新的replica shard都会通过网络传输一份primary shard的完整的副本数据
+（5）很多shard都被移动到其他的node来让集群rebalance
+（6）但是几分钟以后，那个丢失了网络连接的node又重新连接到了集群中
+（7）master节点又要再次进行rebalance操作，因为需要将一些shard分配给那个node
+
+其实如果master node也许只要等待几分钟，那么丢失的那个node自己会回来，丢失的shard也会自动恢复过来，因为数据都在节点的本地，不需要重新拷贝数据以及网络传输，这个过程是非常快速的
+
+index.unassigned.node_left.delayed_timeout，这个参数可以设置某个节点下线之后，对应的replica shard被重新复制和分配的时间等待期，默认是1m，可以通过下面的命令来修改：
+
+PUT _all/_settings
+{
+  "settings": {
+    "index.unassigned.node_left.delayed_timeout": "5m"
+  }
+}
+
+如果启用了delayed allocation之后，那么就会看到下面的场景：
+
+（1）某个node丢失了网络连接
+（2）master将那个node上的一些primary shard对应的其他node上的replica shard提升为primary shard
+（3）master记录下来一条消息日志，这个primary shard的replica shard还没有重新分配和开始，被delayed了，会等待1m
+（4）cluster会保持yellow状态，因为没有足够的replica shard
+（5）那个丢失了的node在几分钟之后，如果回到了集群中
+（6）缺失的那些replica shard会直接分配给那个node，使用其本地的数据即可
+
+如果某个node确定了肯定不会再回到集群中，那么可以通过下面的命令，手动设置一下，直接不等待那个节点回来了
+
+PUT _all/_settings
+{
+  "settings": {
+    "index.unassigned.node_left.delayed_timeout": "0"
+  }
+}
+
+7、索引恢复的优先级
+
+没有被分配的shard都是按照优先级来分配的，有下面几个优先级，index.priority，索引的创建日期，索引名称
+
+PUT index_3
+{
+  "settings": {
+    "index.priority": 10
+  }
+}
+
+8、每个节点的shard数量
+
+cluster.routing.allocation.total_shards_per_node，设置每个节点最多承载的shard数量，默认是无限制的
+

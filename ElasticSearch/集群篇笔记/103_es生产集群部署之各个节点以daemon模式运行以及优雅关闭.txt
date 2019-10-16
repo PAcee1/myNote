@@ -1,0 +1,79 @@
+
+1、以daemon模式运行
+
+在生产环境中，会使用daemon进程的方式来启动es，而不是直接采用前台进程的方式来启动es，具体命令如下
+
+./bin/elasticsearch -d -p pid
+
+上面命令中的-d option用来指定es以daemon进程方式启动，并且-p option指定将进程id记录在指定文件中
+
+es启动后，日志信息可以在ES_HOME/logs目录中查看
+
+此外，启动es进程的时候，还可以直接覆盖一些配置，使用-E即可，如下面的命令，通常用于调试集群参数时，方便快速调节参数，查看效果
+
+（1）log4j的配置不能有空格
+
+（2）创建专门运行elasticsearch的用户，并授权
+
+像我之前讲课，为了方便，全都是用root用户在做各种操作，但是实际生产环境中，大家应该都知道，root都是那些运维人员的权限
+
+es其实是禁止用root用户去启动es进程的，那么可以加一个配置来允许用root去启动，但是还是算了吧
+
+adduser elasticsearch
+passwd elasticsearch
+
+chown -R elasticsearch /usr/local/elasticsearch
+chown -R elasticsearch /var/log/elasticsearch
+chown -R elasticsearch /var/data/elasticsearch
+chown -R elasticsearch /var/plugin/elasticsearch
+chown -R elasticsearch /etc/elasticsearch
+chown -R elasticsearch /usr/local/tmp
+
+（3）修改/etc/security/limits.conf中的用户为elasticsearch，而不是root
+
+（4）加入memlock的soft unlimited
+
+（5）path.plugins失效，删除这一行配置
+
+（6）jvm.options看来还是用的老的目录中的配置文件
+
+（7）将es的bin加入环境变量PATH中
+
+（8）切换到elasticsearch用户来启动es进程
+
+su elasticsearch
+
+elasticsearch -d -Epath.conf=/etc/elasticsearch
+
+2、访问es
+
+一般建议在管理机上安装一个curl工具，可以手工发送rest api请求
+
+可以对启动了es的节点的9200端口，发送一个GET /请求，可以看看es是否启动成功
+
+curl -XGET elasticsearch02:9200
+curl -XGET elasticsearch02:9200/_cat/nodes?v
+
+3、停止es
+
+优雅的关闭es，可以确保es关闭的很干净，并且优雅关闭资源。举例来说，如果node在一个合理的顺序下关闭了，首先会将自己从cluster中优雅移除，fsync translog日志到磁盘中去，然后执行其他相关的cleanup活动。
+
+如果我们将es用service的方式来运行，那么可以通过server管理功能来停止es。
+
+如果我们是直接启动es的，可以control-C停止es，或者是发送SEGTERM信号给es进程
+
+jps | grep Elasticsearch
+
+kill -SIGTERM 15516
+
+如果es发生了fatal error，类似out of memory error，代码bug，或者io error，等等
+
+当es发现jvm有一个fatal error，就会尝试记录在log里面，然后尝试去停止jvm。此时es是不会按照优雅关闭的模式去执行的，而是会直接关闭，并且返回一个错误码
+
+JVM internal error 					128
+Out of memory error 				127
+Stack overflow error 				126
+Unknown virtual machine error 		125
+Serious I/O error 					124
+Unknown fatal error 				1
+

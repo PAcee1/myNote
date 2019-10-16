@@ -1,0 +1,149 @@
+
+1、bootstrap check
+
+经常会碰到一些es的用户，遇到一些奇怪的问题，主要是因为他们没有配置一些重要的设置。在es以前的老版本中，对这些设置错误的配置，会在日志里记录一些warning告警。但是有时候用户会忽略这些日志中的告警信息。为了确保说这些设置的错误配置告警信息可以引起用户的注意，es的新版本中引入了bootstrap check，也就是启动时检查。
+
+这些启动时检查操作，会检查许多es和系统的设置，将这些配置的值跟es期望的安全值去进行比较。如果es在development mode下，那么失败的检查仅仅在日志中打印warning。如果es运行在生产模式下，任何启动时检查的失败都会导致es拒绝启动。
+
+2、development mode vs. production mode
+
+默认情况下，es绑定到localhost hostname，来进行http和内部通信。这对于下载es并简单试用一下，包括日常的开发，都是非常方便的，但是对于生产环境是不行的。如果要组件一个es集群，es实例必须能够通过内部通信协议互相连通，所必须绑定通信到一个外部的接口上。因此如果一个es实例没有绑定通信到外部接口（默认情况下），那么就认为es是处于开发模式下。反之，如果绑定通信到外部接口，那么就是处于生产模式下。
+
+可以通过http.host和transport.host，单独配置http的传输。这就可以配置一个es实例通过http可达，但是却不触发生产模式。
+
+因为有时用户需要将通信绑定到外部解耦来测试client的调用。对于这种场景，es提供了single-node恢复模式（将discovery.type设置为single-node），配置过后，一个节点会选举自己作为master，而且不会跟其他任何节点组成集群。
+
+如果在生产模式下运行一个single node实例，就可以规避掉启动时检查（不要将通信绑定到外部接口，或者将通信绑定到外部接口，但是设置discovery type为single-node）。在这种场景下，可以设置es.enforce.bootstrap.checks为true（通过jvm参数来设置），来强制bootstrap check的执行。
+
+3、heap size check
+
+如果jvm启动的时候设置的初始队大小和最大堆大小不同，可能会导致es运行期间的暂停，因为jvm堆在系统运行期间可能会改变大小。为了避免这种jvm resize导致的es进程暂停，建议启动jvm时，将初始堆大小和最大堆大小设置的相等。除此之外，如果bootstrap.memory_lock被启用了，jvm会在启动期间锁定jvm的初始大小。
+
+如果要通过heap size check，就必须合理设置heap size。
+
+默认情况下，es的jvm堆的最小和最大大小都是2g。如果在生产环境中使用，应该配置合理的heap size确保es有足够的堆内存可以使用。
+
+在jvm.options中设置的Xms和Xmx会用来分配jvm堆内存带澳。
+
+这些设置的值依赖于服务器上可用的总内存大小。下面是一些最佳实践的建议：
+
+（1）将heap的最小和最大大小设置为一样大
+（2）es有更多的heap大小，就有更多的内存用来进行缓存，但是过大的jvm heap可能会导致长时间的gc停顿
+（3）不要设置最大heap size超过物理内存的50%，很专业昂才能给核心的file system cache留下足够的内存
+（4）不要将Xmx设置超过32GB，否则jvm无法启用compressed oops，将对象指针进行压缩，确认日志里有heap size [1.9gb], compressed ordinary object pointers [true]
+（5）更好的选择是，heap size设置的小于zero-based compressed ooops，也就是26GB，但是有时也可以是30GB。通过-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompressedOopsMode开启对应，确认有heap address: 0x000000011be00000, size: 27648 MB, zero based Compressed Oops，而不是heap address: 0x0000000118400000, size: 28672 MB, Compressed Oops with base: 0x00000001183ff000
+（6）在jvm.options文件中，可以通过如下方式来配置heap size
+
+-Xms2g 
+-Xmx2g
+
+（7）也可以通过ES_JAVA_OPTS环境变量来设置heap size
+
+ES_JAVA_OPTS="-Xms2g -Xmx2g"
+
+4、file descriptor check
+
+file descriptor是unix操作系统的一种数据结构，用来track打开的文件。在unix操作系统中，所有东西都是file。比如，file可以是物理文件，虚拟文件，或者网络socket。es需要大量的file descriptor，比如说每个shard都由多个segment和其他文件组成，还有跟其他节点之间的网络通信连接。
+
+因为es要使用大量的file descriptor，所以如果file descriptor耗尽的话，会是一场灾难，甚至可能会导致数据丢失。尽量给es的file descriptor提升到65536，甚至更高。
+
+可以在/etc/security/limits.conf中，设置nofile为65536
+
+GET _nodes/stats/process?filter_path=**.max_file_descriptors
+
+可以用上面这行代码检查每个node上的file descriptor数量
+
+lucene会使用大量的文件，同时es也会使用大量的socket在节点间和client间进行通信，这些都是需要大量的file descriptor的。但是通常来说，现在的linux操作系统，都是给每个进程默认的1024个file descriptor的，这对于一个es进程来说是远远不够的。
+
+我们需要将es进程的file descriptor增加到非常非常大，比如说65535个。一般需要根据我们的操作系统的文档来查看如何设置file descriptor。然后可以直接对es集群查看GET，来确认file descriptor的数量：
+
+{
+  "cluster_name": "elasticsearch",
+  "nodes": {
+    "nLd81iLsRcqmah-cuHAbaQ": {
+      "timestamp": 1471516160318,
+      "name": "Marsha Rosenberg",
+      "transport_address": "127.0.0.1:9300",
+      "host": "127.0.0.1",
+      "ip": [
+        "127.0.0.1:9300",
+        "NONE"
+      ],
+      "process": {
+        "timestamp": 1471516160318,
+        "open_file_descriptors": 155,
+        "max_file_descriptors": 10240, 
+        "cpu": {
+          "percent": 0,
+          "total_in_millis": 25084
+        },
+        "mem": {
+          "total_virtual_in_bytes": 5221900288
+        }
+      }
+    }
+  }
+}
+
+5、memory lock check
+
+如果jvm进行一个major gc的话，那么就会涉及到heap中的每一个内存页，此时如果任何一个内存页被swap到了磁盘上，那么此时就会被swap回内存中。这就会导致很多的磁盘读写开销，而这些磁盘读写开销如果节省下来，可以让es服务更多的请求。有很多方法可以配置系统禁止swap。其中一种方法就是让jvm去lock heap内存在物理内存中，设置bootstrap.memory_lock即可。
+
+GET _nodes?filter_path=**.mlockall
+
+检查一下，mlockall是否开启，如果是false，那么说明lock memory失败了，而且日志里可能会有unable to lock jvm memory的字样
+
+可能就是因为运行es的用户没有lock memory的权限，此时就需要进行授权
+
+/etc/security/limits.conf
+
+设置memlock为unlimited即可完成授权
+
+另外一个原因导致lock memory失败，可能是因为临时目录，/tmp用noexec option来mount了
+
+那么就需要设置ES_JAVA_OPTS，export ES_JAVA_OPTS="$ES_JAVA_OPTS -Djava.io.tmpdir=/path/to/temp/dir"
+
+或者在jvm.options中设置这个参数
+
+6、maximum number of thread check
+
+es会将每个请求拆分成多个stage，然后将stage分配到不同的线程池中去执行。在es中有多个线程池来执行不同的任务。所以es会创建许多的线程。最大线程数量的检查会确保说，es实例有权限去创建足够的线程。如果要通过这个检查，必须允许es进程能够创建超过2048个线程。
+
+/etc/security/limits.conf，在这个文件中，用nproc来设置
+
+7、maximum size virtual memory check
+
+es使用mmap来将索引映射到es的address space中，这可以让jvm heap外但是内存中的索引数据，可以有非常告诉的读写速度。因此es需要拥有unlimited address space。最大虚拟内存大小的检查，会要求es进程有unlimited address space。
+
+/etc/security/limits.conf，设置as为unlimited
+
+8、maximum map count check
+
+要高效使用mmap的话，es同样要求创建许多memory-mapped area。因此要求linux内核允许进程拥有至少262144个memory-mapped area，需要通过sysctl设置vm.max_map_count至少超过262144。
+
+9、client jvm check
+
+jvm有两种模式，client jvm和server jvm。不同的jvm会用不同的编译器来从java源码生成可执行机器代码。client jvm被优化了来减少startup time和内存占用，server jvm被优化了来最大化性能。两种jvm之间的性能区别是很明显的。client jvm check会确保es没有运行在client jvm下。必须使用server jvm模式来启动es，而server jvm是默认的。
+
+10、use serial collector check
+
+针对不同的工作负载，jvm提供了不同的垃圾回收器。串行化垃圾回收期对于单cpu机器或者小内存，是很有效的。但是对于es来说，用串行化垃圾回收器，会成为一场性能上的灾难。因此这个check会确保es没有被配置使用串行化垃圾回收器。es默认的就是cms垃圾回收器。
+
+11、system call filter check
+
+es会根据不同的操作系统来安装system call filter，用来阻止执行作为defense机制的fork相关system call，进而避免任意代码执行的攻击。这个check会检查是否允许system call filter，然后安装这些system call filter。避免bootstrap.system_call_filter设置为false。
+
+12、OnError and OnOutOfMemoryError check
+
+jvm参数，OnError和OnOutOfMemoryError允许在jvm遇到了fatal error或者是OutOfMemoryErro的时候，执行我们预定义的命令。然而，默认情况下，es system call filter是启用的，这些filter是阻止forking操作的。因此，用OnError和OnOutOfMemroyError和system call filter是不兼容的。这个check会检查，如果启用了system call filter，还设置了这两个jvm option，那么就不能启动。所以不要在jvm option中设置这两个参数。
+
+13、early-access check
+
+jdk提供了early-access快照，为即将到来的版本。这些版本不适合用作生产环境。这个check会检查有没有使用jdk的early-access快照版本。我们应该用jdk稳定版本，而不是试用版本。
+
+14、G1 GC check
+
+jdk 8的jvm早期版本中的g1 gc，有已知的问题可能导致索引破损。在JDK 8u40之前的版本都有这个问题。这个check会检查是否使用了那种早期的JDk版本。
+
+
+
