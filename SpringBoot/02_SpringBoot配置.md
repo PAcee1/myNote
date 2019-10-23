@@ -454,9 +454,9 @@ spring:
 1. **@SpringBootApplication**中具有一个**@EnableAutoConfiguration**注解
 2. 在里面Import了一个`EnableAutoConfigurationImportSelector`类
 3. 其中有一个`getCandidateConfigurations`方法，调用了`Loader`的`loadFactoryNames`方法
-4. 这个方法是根据`META-INF/spring.factories`中配置的`AutoProperties`类进行装载到容器中
+4. 这个方法是根据`META-INF/spring.factories`中配置的`AutoConfiguration`类进行装载到容器中
 
-**而我们在配置文件中的配置，全部都来自于这些Properties类！**
+**而我们在配置文件中的配置，全部都来自于这些AutoConfiguration类！**
 
 ------
 
