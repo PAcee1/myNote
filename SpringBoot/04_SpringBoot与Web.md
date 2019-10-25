@@ -783,3 +783,95 @@ public class MyMvcConfig{
 
 ![1571907672874](../image/1571907698378.png)
 
+### 5.3.拦截器
+
+我们写一下登录操作，表单提交到`/user/login`，简单判断下，注意，**为了防止转发后表单重复提交，应使用重定向**
+
+```java
+@Controller
+public class LoginController {
+
+    @PostMapping(value = "/user/login")
+    public String login(@RequestParam String username,
+                        @RequestParam String password,
+                        Map<String,Object> map){
+        if(!StringUtils.isEmpty(username) && password.equals("123456")){
+            // 防止表单重复提交，重定向到主页
+            return "redirect:/main.html";
+        }
+        map.put("msg","登录失败");
+        return "login";
+    }
+}
+```
+
+```html
+<form class="form-signin" action="dashboard.html" th:action="@{/user/login}" method="post">
+```
+
+```java
+@Bean
+public WebMvcConfigurerAdapter webMvcConfigurerAdapter(){
+    return new WebMvcConfigurerAdapter() {
+        @Override
+        public void addViewControllers(ViewControllerRegistry registry) {
+            registry.addViewController("/").setViewName("login");
+            registry.addViewController("/index.html").setViewName("login");
+            registry.addViewController("/main.html").setViewName("dashboard");
+        }
+    };
+}
+```
+
+这时候我们发现，如果没有登录，直接请求`http://localhost:8080/crud/main.html`，也是成功的，所以就需要添加一个拦截器。
+
+自定义拦截器和添加其他组件一样，写一个类实现HandlerInterceptor，然后重写方法，注册到容器中，因为这个是WebMVCAutoConfiguration中的组件，所以应在WebMvc自动配置中addInterceptor，代码如下：
+
+1）新建一个拦截器类MyHandlerInterceptor
+
+```java
+// 实现HandlerInterceptor，即这是一个拦截器
+public class MyHandlerInterceptor implements HandlerInterceptor {
+
+    // 目标执行方法前，先进行判断
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        Object userName = (String) request.getSession().getAttribute("userName");
+        if(userName == null){
+            // 错误，返回登录页
+            request.setAttribute("msg","请先登录");
+            request.getRequestDispatcher("/index.html").forward(request,response);
+            return false;
+        }else {
+            return true;
+        }
+    }
+```
+
+2）注册到容器中
+
+```java
+@Configuration
+public class MyMvcConfig{
+
+    @Bean
+    public WebMvcConfigurerAdapter webMvcConfigurerAdapter(){
+        return new WebMvcConfigurerAdapter() {
+            @Override
+            public void addViewControllers(ViewControllerRegistry registry) {
+                registry.addViewController("/").setViewName("login");
+                registry.addViewController("/index.html").setViewName("login");
+                registry.addViewController("/main.html").setViewName("dashboard");
+            }
+
+            // 添加拦截器组件，属于WebMvc的一个组件
+            @Override
+            public void addInterceptors(InterceptorRegistry registry) {
+                registry.addInterceptor(new MyHandlerInterceptor()).addPathPatterns("/**")
+                            .excludePathPatterns("/index.html","/","/user/login");
+            }
+        };
+    }
+
+```
+
