@@ -1059,7 +1059,7 @@ public class BasicErrorController extends AbstractErrorController {
 	}
 ```
 
-3. DefaultErrorViewResolver：决定请求哪个文件
+3. DefaultErrorViewResolver：决定请求哪个文件，默认对4xx与5xx与状态码.html做映射
 
 ```java
 static {
@@ -1145,7 +1145,7 @@ public String hello(Map<String,Object> map){
 
 可以看到json数据是SpringBoot默认定制的，我想自己定制应该怎么做呢？
 
-1）首先需要定制一个ExceptionHandler异常处理类，重写handleException方法
+1）首先需要定制一个ExceptionHandler异常处理类，重写handleException方法，需要转发到`/error`中，让SpringBoot来进行异常处理
 
 ```java
 @ControllerAdvice
@@ -1195,3 +1195,380 @@ public class MyErrorAttributes extends DefaultErrorAttributes {
 ![1572080382401](../image/1572080382401.png)
 
 浏览器或客户端请求都可以正确响应出我们所需的信息
+
+## 七、SpringBoot与Servlet
+
+我们知道，SpringBoot使用jar包的方式运行，还能再浏览器访问，就是因为它使用了嵌入式的tomcat，而我们可以通过一些方法来修改默认的配置
+
+### 7.1.修改Servlet配置
+
+```java
+@ConfigurationProperties(prefix = "server", ignoreUnknownFields = true)
+public class ServerProperties
+      implements EmbeddedServletContainerCustomizer, EnvironmentAware, Ordered {
+   private Integer port;
+   private InetAddress address;
+    
+   public static class Tomcat {
+		private Charset uriEncoding;
+```
+
+1.通过查看源码，可以发现Server配置有一个**ServerProperties**配置类，可以根据它来配一些属性
+
+```properties
+server.port=8081
+server.context-path=/crud
+server.tomcat.uri-encoding=UTF-8
+
+//通用的Servlet容器设置
+server.xxx
+//Tomcat的设置
+server.tomcat.xxx
+```
+
+2.还可以发现，**ServerProperties**实现了一个**EmbeddedServletContainerCustomizer**，即Servlet个性化类，我们也可以通过写一个类实现它，来进行一些配置
+
+```java
+@Bean
+public EmbeddedServletContainerCustomizer embeddedServletContainerFactory(){
+    return new EmbeddedServletContainerCustomizer() {
+        @Override
+        public void customize(ConfigurableEmbeddedServletContainer container) {
+            container.setPort(8081);
+        }
+    };
+}
+```
+
+### 7.2.注册三大组件
+
+由于SpringBoot默认是以jar包的方式启动嵌入式的Servlet容器来启动SpringBoot的web应用，没有web.xml文件。
+
+注册三大组件用以下方式
+
+ServletRegistrationBean
+
+```java
+//注册三大组件
+@Bean
+public ServletRegistrationBean myServlet(){
+    ServletRegistrationBean registrationBean = new ServletRegistrationBean(new MyServlet(),"/myServlet");
+    return registrationBean;
+}
+
+```
+
+FilterRegistrationBean
+
+```java
+@Bean
+public FilterRegistrationBean myFilter(){
+    FilterRegistrationBean registrationBean = new FilterRegistrationBean();
+    registrationBean.setFilter(new MyFilter());
+    registrationBean.setUrlPatterns(Arrays.asList("/hello","/myServlet"));
+    return registrationBean;
+}
+```
+
+ServletListenerRegistrationBean
+
+```java
+@Bean
+public ServletListenerRegistrationBean myListener(){
+    ServletListenerRegistrationBean<MyListener> registrationBean = new ServletListenerRegistrationBean<>(new MyListener());
+    return registrationBean;
+}
+```
+
+SpringBoot帮我们自动SpringMVC的时候，自动的注册SpringMVC的前端控制器；DIspatcherServlet；
+
+DispatcherServletAutoConfiguration中：
+
+```java
+@Bean(name = DEFAULT_DISPATCHER_SERVLET_REGISTRATION_BEAN_NAME)
+@ConditionalOnBean(value = DispatcherServlet.class, name = DEFAULT_DISPATCHER_SERVLET_BEAN_NAME)
+public ServletRegistrationBean dispatcherServletRegistration(
+      DispatcherServlet dispatcherServlet) {
+   ServletRegistrationBean registration = new ServletRegistrationBean(
+         dispatcherServlet, this.serverProperties.getServletMapping());
+    //默认拦截： /  所有请求；包静态资源，但是不拦截jsp请求；   /*会拦截jsp
+    //可以通过server.servletPath来修改SpringMVC前端控制器默认拦截的请求路径
+    
+   registration.setName(DEFAULT_DISPATCHER_SERVLET_BEAN_NAME);
+   registration.setLoadOnStartup(
+         this.webMvcProperties.getServlet().getLoadOnStartup());
+   if (this.multipartConfig != null) {
+      registration.setMultipartConfig(this.multipartConfig);
+   }
+   return registration;
+}
+
+```
+
+### 7.3.替换其他嵌入式Servlet容器
+
+![1572150378077](../image/1572150378077.png)
+
+可以看到，除了tomcat，还具有undertow和jetty两个容器，默认为tomcat，可以通过修改pom文件的方式来引入其他两个
+
+Tomcat：
+
+```xml
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-web</artifactId>
+   引入web模块默认就是使用嵌入式的Tomcat作为Servlet容器；
+</dependency>
+```
+
+Jetty:
+
+```xml
+<!-- 引入web模块 -->
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-web</artifactId>
+   <exclusions>
+      <exclusion>
+         <artifactId>spring-boot-starter-tomcat</artifactId>
+         <groupId>org.springframework.boot</groupId>
+      </exclusion>
+   </exclusions>
+</dependency>
+
+<!--引入其他的Servlet容器-->
+<dependency>
+   <artifactId>spring-boot-starter-jetty</artifactId>
+   <groupId>org.springframework.boot</groupId>
+</dependency>
+```
+
+Undertow:
+
+```xml
+<!-- 引入web模块 -->
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-web</artifactId>
+   <exclusions>
+      <exclusion>
+         <artifactId>spring-boot-starter-tomcat</artifactId>
+         <groupId>org.springframework.boot</groupId>
+      </exclusion>
+   </exclusions>
+</dependency>
+
+<!--引入其他的Servlet容器-->
+<dependency>
+   <artifactId>spring-boot-starter-undertow</artifactId>
+   <groupId>org.springframework.boot</groupId>
+</dependency>
+```
+
+### 7.4.容器自动配置原理
+
+SpringBoot具有一个为Servlet容器自动配置的配置类**EmbeddedServletContainerAutoConfiguration**：
+
+```java
+@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
+@Configuration
+@ConditionalOnWebApplication
+@Import(BeanPostProcessorsRegistrar.class) // 3.对容器初始化前后进行属性设置
+public class EmbeddedServletContainerAutoConfiguration {
+
+   @Configuration
+   @ConditionalOnClass({ Servlet.class, Tomcat.class }) // 1.判断是否有Tomcat的class，如果有则启用
+   @ConditionalOnMissingBean(value = EmbeddedServletContainerFactory.class, search = SearchStrategy.CURRENT) // 判断当前容器没有用户自己定义EmbeddedServletContainerFactory
+   public static class EmbeddedTomcat {
+      @Bean
+      public TomcatEmbeddedServletContainerFactory tomcatEmbeddedServletContainerFactory() {
+         return new TomcatEmbeddedServletContainerFactory(); // 2.通过工厂创建容器
+      }
+
+   }
+
+   @Configuration
+   @ConditionalOnClass({ Servlet.class, Server.class, Loader.class,
+         WebAppContext.class })
+   @ConditionalOnMissingBean(value = EmbeddedServletContainerFactory.class, search = SearchStrategy.CURRENT)
+   public static class EmbeddedJetty {
+      @Bean
+      public JettyEmbeddedServletContainerFactory jettyEmbeddedServletContainerFactory() {
+         return new JettyEmbeddedServletContainerFactory();
+      }
+
+   }
+
+   @Configuration
+   @ConditionalOnClass({ Servlet.class, Undertow.class, SslClientAuthMode.class })
+   @ConditionalOnMissingBean(value = EmbeddedServletContainerFactory.class, search = SearchStrategy.CURRENT)
+   public static class EmbeddedUndertow {
+      @Bean
+      public UndertowEmbeddedServletContainerFactory undertowEmbeddedServletContainerFactory() {
+         return new UndertowEmbeddedServletContainerFactory();
+      }
+
+   }
+```
+
+1）` @ConditionalOnClass({ Servlet.class, Tomcat.class })`：Springboot通过判断是否存在三个容器的class来决定启用哪个容器
+
+2）`new TomcatEmbeddedServletContainerFactory()`：通过嵌入式容器工厂创建相应的Servlet容器
+
+![1572150378077](../image/1572150378077.png)
+
+```java
+@Override
+public EmbeddedServletContainer getEmbeddedServletContainer(
+      ServletContextInitializer... initializers) {
+   Tomcat tomcat = new Tomcat(); // 创建一个Tomcat
+   // 对Tomca进行基本设置
+   File baseDir = (this.baseDirectory != null ? this.baseDirectory
+         : createTempDir("tomcat"));
+   tomcat.setBaseDir(baseDir.getAbsolutePath());
+   Connector connector = new Connector(this.protocol);
+   tomcat.getService().addConnector(connector);
+   customizeConnector(connector);
+   tomcat.setConnector(connector);
+   tomcat.getHost().setAutoDeploy(false);
+   configureEngine(tomcat.getEngine());
+   for (Connector additionalConnector : this.additionalTomcatConnectors) {
+      tomcat.getService().addConnector(additionalConnector);
+   }
+   prepareContext(tomcat.getHost(), initializers);
+   // 传入Tomcat进容器中，并启动
+   return getTomcatEmbeddedServletContainer(tomcat);
+}
+```
+
+通过`TomcatEmbeddedServletContainerFactory`的源码，更能印证了对Tomcat的初始化启动
+
+3）`@Import(BeanPostProcessorsRegistrar.class)`：对容器初始化前后进行属性设置
+
+`BeanPostProcessorsRegistrar`，进行了Bean的赋值，通过`EmbeddedServletContainerCustomizerBeanPostProcessor`的postProcessBeforeInitialization()方法对初始化前进行个性化配置
+
+```java
+@Override // 初始化前
+public Object postProcessBeforeInitialization(Object bean, String beanName)
+      throws BeansException {
+   if (bean instanceof ConfigurableEmbeddedServletContainer) {
+       // 调用方法对Tomcat进行初始化配置
+      postProcessBeforeInitialization((ConfigurableEmbeddedServletContainer) bean);
+   }
+   return bean;
+}
+```
+
+其中调用了postProcessBeforeInitialization()来进行初始化配置
+
+```java
+private void postProcessBeforeInitialization(
+			ConfigurableEmbeddedServletContainer bean) {
+    //获取所有的定制器，调用每一个定制器的customize方法来给Servlet容器进行属性赋值；
+    for (EmbeddedServletContainerCustomizer customizer : getCustomizers()) {
+        customizer.customize(bean);
+    }
+}
+```
+
+可以看到，对每个容器进行了customize(bean)，这个方法就是配置容器属性的，默认配置或个性化配置
+
+```java
+@Override
+public void customize(ConfigurableEmbeddedServletContainer container) {
+   if (getPort() != null) {
+      container.setPort(getPort());
+   }
+   if (getAddress() != null) {
+      container.setAddress(getAddress());
+   }
+   if (getContextPath() != null) {
+      container.setContextPath(getContextPath());
+   }
+   ···
+```
+
+步骤：
+
+1. SpringBoot根据导入的依赖情况，给容器中添加相应的EmbeddedServletContainerFactory【TomcatEmbeddedServletContainerFactory】
+2. 容器中某个组件要创建对象就会惊动后置处理器；EmbeddedServletContainerCustomizerBeanPostProcessor；
+
+3. 后置处理器，从容器中获取所有的**EmbeddedServletContainerCustomizer**，调用定制器的定制方法
+
+### 7.5.容器启动原理
+
+1. SpringBoot启动运行run
+
+2. SpringApplication会执行AbstractApplicationContext的refresh方法，refresh是一个重要的注解开发方法，后面研究Spring注解时再详细研究，主要是刷新SpringIOC容器（创建IOC容器，初始化容器，进行属性配置，创建每个容器中的必要组件）
+
+   ```java
+   public void refresh() throws BeansException, IllegalStateException {
+   
+     synchronized (this.startupShutdownMonitor) {
+   
+     // Prepare this context for refreshing.
+   
+     prepareRefresh();
+     // Tell the subclass to refresh the internal bean factory.
+     ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+   
+     // Prepare the bean factory for use in this context.
+     prepareBeanFactory(beanFactory);
+   
+     try {
+        // Allows post-processing of the bean factory in context subclasses.
+        postProcessBeanFactory(beanFactory);
+   
+        // Invoke factory processors registered as beans in the context.
+        invokeBeanFactoryPostProcessors(beanFactory);
+   
+        // Register bean processors that intercept bean creation.
+        registerBeanPostProcessors(beanFactory);
+   
+        // Initialize message source for this context.
+        initMessageSource();
+   
+        // Initialize event multicaster for this context.
+        initApplicationEventMulticaster();
+   
+        // Initialize other special beans in specific context subclasses.
+        onRefresh();
+   
+        // Check for listener beans and register them.
+        registerListeners();
+   
+        // Instantiate all remaining (non-lazy-init) singletons.
+        finishBeanFactoryInitialization(beanFactory);
+   
+        // Last step: publish corresponding event.
+        finishRefresh();
+     }
+   
+     catch (BeansException ex) {
+        if (logger.isWarnEnabled()) {
+           logger.warn("Exception encountered during context initialization - " +
+                 "cancelling refresh attempt: " + ex);
+        }
+   
+        // Destroy already created singletons to avoid dangling resources.
+        destroyBeans();
+   
+        // Reset 'active' flag.
+        cancelRefresh(ex);
+   
+        // Propagate exception to caller.
+        throw ex;
+     }
+   
+     finally {
+        // Reset common introspection caches in Spring's core, since we
+        // might not ever need metadata for singleton beans anymore...
+        resetCommonCaches();
+     }
+     }
+   }
+   ```
+
+3. refresh方法中onRefresh()：web情况下的IOC重写了这个方法，会创建**createEmbeddedServletContainer**，Servlet容器
+
+4. 接下来就是我们上面7.4说的容器自动配置了，根据容器的时候创建**TomcatEmbeddedServletContainerFactory**或其他，然后惊动后置处理器，进行初始化前后的属性修改
