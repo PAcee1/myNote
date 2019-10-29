@@ -529,7 +529,7 @@ public static class EnableWebMvcConfiguration extends DelegatingWebMvcConfigurat
 
 3）在这个类中可以发现一个`setConfigurers()`的方法，用来设置mvc的配置
 
-```
+```java
 @Configuration
 public class DelegatingWebMvcConfiguration extends WebMvcConfigurationSupport {
 

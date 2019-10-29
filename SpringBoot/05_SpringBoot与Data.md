@@ -247,3 +247,250 @@ public class DruidConfig {
 
 ![1572266211280](D:\1笔记\image\1572266211280.png)
 
+## 二、Mybatis
+
+整合只需添加依赖：
+
+```xml
+<dependency>
+    <groupId>org.mybatis.spring.boot</groupId>
+    <artifactId>mybatis-spring-boot-starter</artifactId>
+    <version>1.3.1</version>
+</dependency>
+```
+
+步骤：
+
+​	1）、配置数据源相关属性（见上一节Druid）
+
+​	2）、给数据库建表
+
+​	3）、创建JavaBean
+
+### 2.1.注解版
+
+Dao:
+
+```java
+//指定这是一个操作数据库的mapper
+@Mapper
+public interface DepartmentMapper {
+
+    @Select("select * from department where id=#{id}")
+    public Department getDeptById(Integer id);
+
+    @Delete("delete from department where id=#{id}")
+    public int deleteDeptById(Integer id);
+
+    @Options(useGeneratedKeys = true,keyProperty = "id")
+    @Insert("insert into department(departmentName) values(#{departmentName})")
+    public int insertDept(Department department);
+
+    @Update("update department set departmentName=#{departmentName} where id=#{id}")
+    public int updateDept(Department department);
+}
+```
+
+Controller：
+
+```java
+@RestController
+public class DepartmentController {
+
+    @Autowired
+    private DepartmentDao departmentDao;
+
+    @GetMapping("/dept/{id}")
+    public Department getById(@PathVariable("id") Integer id){
+        return departmentDao.getById(id);
+    }
+
+    @GetMapping("/dept")
+    public Department insert(Department department){
+        departmentDao.insert(department);
+        return department;
+    }
+
+}
+```
+
+#### 驼峰问题
+
+需要使用自动配置，和往常一样，创建一个类，给容器中添加ConfigurationCustomizer组件
+
+```java
+@org.springframework.context.annotation.Configuration
+public class MybatisConfig {
+
+    @Bean
+    public ConfigurationCustomizer configurationCustomizer(){
+        return new ConfigurationCustomizer() {
+            @Override
+            public void customize(Configuration configuration) {
+                configuration.setMapUnderscoreToCamelCase(true);
+            }
+        };
+    }
+}
+```
+
+#### @Mapper问题
+
+可以发现我们的dao类上添加了一个@Mapper注解，如果有很多dao就需要添加很多的mapper注解，我们也可以在启动器上添加一个mapper扫描注解，便不需要每个dao都添加一个mapper注解了
+
+```java
+@MapperScan("com.enbuys.springboot.dao")
+```
+
+### 2.2.配置版
+
+随便springboot强调全注解开发，但也要了解下配置mapper文件
+
+dao层：
+
+```java
+public interface EmployeeDao {
+
+    public Employee getById(Integer id);
+
+    public int insert(Employee employee);
+}
+```
+
+mybatis全局配置文件：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+</configuration>
+```
+
+对应mapper：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enbuys.springboot.dao.EmployeeDao">
+
+    <!--public Employee getById(Integer id);
+
+    public int insert(Employee employee);-->
+
+    <select id="getById" parameterType="Integer" resultType="com.enbuys.springboot.bean.Employee">
+        select * from employee where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.enbuys.springboot.bean.Employee">
+        insert into employee
+        (lastName,email,gender,d_id)
+        values (#{lastName},#{email},#{gender},#{dId})
+    </insert>
+
+</mapper>
+```
+
+springboot配置文件
+
+```yml
+# mybatis
+mybatis:
+  config-location: classpath:mybatis/mybatis-config.xml
+  mapper-locations: classpath:mybatis/mapper/*.xml
+```
+
+## 三、JPA
+
+对于JPA也不过多介绍了，是一个非常好用的ORM框架，说说如何集成
+
+1）在pom文件中引入：
+
+```xml
+<!--引jpa-->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<!--引mysql-->
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+2）创建实体类
+
+```java
+@Entity
+@Table(name = "user")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // 设置自增主键
+    private Integer id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column // 如果不写默认属性名
+    private String email;
+```
+
+3）写一个接口集成JpaRepository，这个类有很多增删改查的方法，可以直接使用
+
+```java
+// 只需继承JpaRepository即可
+public interface UserRepository extends JpaRepository<User,Integer> {
+}
+```
+
+4）配置文件配置
+
+```yaml
+spring:
+  datasource:
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/springboot_jdbc?serverTimezone=Asia/Shanghai
+  jpa:
+    hibernate:
+#     更新或创建表，因为我们没有这个表，所以开启让他创建一张
+      ddl-auto: update
+#   在控制台打印sql
+    show-sql: true
+```
+
+可以看懂，因为配置了spring.jpa.hibernate.ddl-auto=update，所以在启动项目时，会判断是否有这个表，如果没有创建，如果有判断实体与表映射关系是否正确，如果实体修改了，也会修改表。
+
+如图：新建了user这张表
+
+![1572332591974](D:\1笔记\image\1572332591974.png)
+
+5）controller测试
+
+```java
+@RestController
+public class JpaController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @GetMapping("/user/{id}")
+    public User getUserById(@PathVariable("id") Integer id){
+        Optional<User> user =  userRepository.findById(id);
+        return user.orElseGet(User::new);
+    }
+}
+```
+
+![1572333259047](D:\1笔记\image\1572333259047.png)
+
