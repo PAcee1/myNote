@@ -444,7 +444,7 @@ public class User {
     private String email;
 ```
 
-3）写一个接口集成JpaRepository，这个类有很多增删改查的方法，可以直接使用
+3）写一个接口集成JpaRepository，这个类有很多自带的增删改查的方法，可以直接使用
 
 ```java
 // 只需继承JpaRepository即可
@@ -469,7 +469,7 @@ spring:
     show-sql: true
 ```
 
-可以看懂，因为配置了spring.jpa.hibernate.ddl-auto=update，所以在启动项目时，会判断是否有这个表，如果没有创建，如果有判断实体与表映射关系是否正确，如果实体修改了，也会修改表。
+可以看到，因为配置了spring.jpa.hibernate.ddl-auto=update，所以在启动项目时，会判断是否有这个表，如果没有创建，如果有判断实体与表映射关系是否正确，如果实体修改了，也会修改表。
 
 如图：新建了user这张表
 
