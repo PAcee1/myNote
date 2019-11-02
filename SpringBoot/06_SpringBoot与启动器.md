@@ -32,7 +32,7 @@ org.springframework.boot.autoconfigure.aop.AopAutoConfiguration,\
 
 1）创建一个空工程，并创建一个maven启动器模块，一个springboot的自动配置模块
 
-![1572433750594](D:\1笔记\image\1572433750594.png)
+![1572433750594](../image/1572433750594.png)
 
 2）在启动器模块引入自动配置模块
 
@@ -50,7 +50,7 @@ org.springframework.boot.autoconfigure.aop.AopAutoConfiguration,\
 
 如test依赖，maven依赖，只需要springboot-starter依赖即可，并把测试类和主程序配置文件删除
 
-![1572433929593](D:\1笔记\image\1572433929593.png)
+![1572433929593](../image/1572433929593.png)
 
 并添加springboot启动器依赖，这里我还添加了web依赖是因为方便一会测试
 
@@ -198,6 +198,6 @@ enbuys.hello.suffix=enbuys
 
 4）启动测试
 
-![1572436548929](D:\1笔记\image\1572436548929.png)
+![1572436548929](../image/1572436548929.png)
 
 说明我们的自定义启动器已经创建成功
