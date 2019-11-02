@@ -255,3 +255,302 @@ public void deleteById(Integer id){
 ![1572515441131](../image/1572515441131.png)
 
 再次请求数据库，说明缓存被成功清除
+
+## 五、其他一些注解
+
+SpringBoot提供的缓存注解还有一些其他的
+
+### @Caching
+
+对于复杂的缓存机制，可以使用这个注解来组合缓存机制，如：
+
+```java
+@Caching(
+        cacheable = {
+                @Cacheable(cacheNames = "emp",key = "#lastName")
+        },
+        put = {
+                @CachePut(cacheNames = "emp",key = "#result.id")
+        }
+)
+public Employee getBylastName(String lastName){
+    return employeeDao.getBylastName(lastName);
+}
+```
+
+可以看到，我们在`getBylastName()`方法上组合了@Cacheable和@CachePut，这样在执行方法时，即会添加key为lastName的缓存，还会添加key为id的缓存，并且每次都会执行该方法，因为有@CachePut的存在。
+
+### @CacheConfig
+
+这个注解加在类名上，可以指定这个类的缓存一些配置，就不用再每个方法上都写cacheName配置了
+
+```java
+public @interface CacheConfig {
+
+    // 配置缓存Map名称
+   String[] cacheNames() default {};
+
+    // 配置使用的key生成器
+   String keyGenerator() default "";
+
+    // 配置缓存管理器
+   String cacheManager() default "";
+
+   String cacheResolver() default "";
+
+}
+```
+
+```java
+@CacheConfig(cacheNames = "emp") // 设置名称为emp后，此类中所有方法的缓存名称设置都可以去掉
+@Service
+public class EmpService {
+
+    @Autowired
+    private EmployeeDao employeeDao;
+
+    @Cacheable(/*cacheNames = "emp"*/)
+    public Employee getById(Integer id){
+        return employeeDao.getById(id);
+    }
+
+    @CachePut(/*cacheNames = "emp",*/key = "#employee.id")
+    public Employee update(Employee employee){
+        employeeDao.update(employee);
+        return employee;
+    }
+
+    @CacheEvict(/*cacheNames = "emp"*/)
+    public void deleteById(Integer id){
+        System.out.println("delete emp id="+id);
+        //employeeDao.delete(id);
+    }
+
+    @Caching(
+            cacheable = {
+                    @Cacheable(/*cacheNames = "emp",*/key = "#lastName")
+            },
+            put = {
+                    @CachePut(/*cacheNames = "emp",*/key = "#result.id")
+            }
+    )
+    public Employee getBylastName(String lastName){
+        return employeeDao.getBylastName(lastName);
+    }
+}
+```
+
+## 六、集成Redis
+
+SpringBoot集成使用Redis做缓存也非常简单，当然需要一个redis服务器才行，开启redis后
+
+添加pom依赖：
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+修改配置文件：
+
+```yaml
+spring:
+  redis:
+    host: 192.168.252.250
+```
+
+测试：
+
+重启服务，再次访问`getById(Integer id)`方法，看看我们的redis中有没有存入数据
+
+![1572682338751](../image/1572682338751.png)
+
+发现抛出序列号异常，我们需要将Employee类加上序列化接口，再次请求
+
+![1572682418535](../image/1572682418535.png)
+
+发现保存成功，但是发现和我们预想的不一样，存的数据都是序列化后的。
+
+### 序列化问题
+
+一般遇到这种情况，都是在redis中存储json格式的实体类，即先转成json再进行保存。这里我们去RedisAutoConfiguration中看看默认的序列化是什么？
+
+1）进入到RedisAutoConfiguration中查看RedisConfiguration
+
+```java
+@Configuration
+protected static class RedisConfiguration {
+
+   @Bean
+   @ConditionalOnMissingBean(name = "redisTemplate")
+   public RedisTemplate<Object, Object> redisTemplate(
+         RedisConnectionFactory redisConnectionFactory)
+         throws UnknownHostException {
+      RedisTemplate<Object, Object> template = new RedisTemplate<Object, Object>();
+      template.setConnectionFactory(redisConnectionFactory);
+      return template;
+   }
+
+   @Bean
+   @ConditionalOnMissingBean(StringRedisTemplate.class)
+   public StringRedisTemplate stringRedisTemplate(
+         RedisConnectionFactory redisConnectionFactory)
+         throws UnknownHostException {
+      StringRedisTemplate template = new StringRedisTemplate();
+      template.setConnectionFactory(redisConnectionFactory);
+      return template;
+   }
+
+}
+```
+
+会发现这里注入了两个组件，RedisTemplate和StringRedisTemplate，这是Spring为了帮助我们开发，写的两个对redis操作的类，以前使用Jedis进行操作非常繁琐，使用这两个非常简单
+
+![1572682932766](../image/1572682932766.png)
+
+- StringRedisTemplate：主要对k-v都是字符串的进行操作，一般用来对key进行操作
+- RedisTemplate：k-v都是对象的进行操作，一般用来对value进行操作
+
+因为这两个是实际对数据进行保存查找的类，所以我们想看Redis的序列化规则，就要进他们源码看
+
+2）在进入到RedisTemplate中看
+
+```java
+public class RedisTemplate<K, V> extends RedisAccessor implements RedisOperations<K, V>, BeanClassLoaderAware {
+
+   ·····
+   private RedisSerializer<?> defaultSerializer;
+   public void afterPropertiesSet() {
+		·····
+		if (defaultSerializer == null) {
+			defaultSerializer = new JdkSerializationRedisSerializer(
+					classLoader != null ? classLoader : this.getClass().getClassLoader());
+		}
+```
+
+可以发现，默认使用JdkSerializationRedisSerializer来进行序列化操作，所以会出现上面显示的乱码问题，我们想要解决，就必须自己写一个RedisConfig配置类，
+
+3）创建MyRedisConfig
+
+这里我们需要先看下有哪些序列化器供我们使用，进入RedisSerializer中，`ctrl+h`查看
+
+![1572683349363](../image/1572683349363.png)
+
+进入源码可以看到有这么多序列化器，我们需要json的便使用Jacson2JsonRedis序列化器
+
+```java
+@Configuration
+public class MyRedisConfig {
+
+    @Bean
+    public RedisTemplate<Object, Object> redisTemplate(
+            RedisConnectionFactory redisConnectionFactory){
+        RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory);
+
+        //开启默认类型
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        // 转json时带类信息，这样反序列化就可以知道哪个类而不会报类型转换异常了
+        objectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        objectMapper.setDateFormat(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss"));
+        
+        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+        jackson2JsonRedisSerializer.setObjectMapper(objectMapper);
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(jackson2JsonRedisSerializer);
+        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+        redisTemplate.setHashValueSerializer(jackson2JsonRedisSerializer);
+        redisTemplate.afterPropertiesSet();
+        return redisTemplate;
+    }
+    
+}
+```
+
+这样我们的配置就写好了，对于key来说使用StringRedsiSerializer，对于value，Object类型需要json转在保存的使用jackson序列化器。
+
+==我们可以发现，我们只配置了一个RedisTemplate，而没有配置RedisCacheManager，这样SpringBoot会自动使用我们的吗？==
+
+我们在刚刚RedisAutoConfiguration源码可以得知：
+
+```java
+@ConditionalOnMissingBean(name = "redisTemplate")
+```
+
+当容器中具有这个名称的组件时，便不生效，使用用户自定义的。
+
+所以，因为我们的组件名正好为redisTemplate，所以会自动使用我们的，但如果名字叫MyRedisTemplate，便需要配置RedisCacheManager
+
+```java
+@Configuration
+public class MyRedisConfig {
+
+    @Bean
+    public RedisTemplate<Object, Object> myRedisTemplate(
+            RedisConnectionFactory redisConnectionFactory) {
+       ······
+    }
+
+    /**
+     * 在Redis自动配置类中@ConditionalOnMissingBean(name = "redisTemplate") 如果没有名字叫RedisTemplate的才生效
+     * 因为我们向容器中注入的组件就为redisTemplate，所以不需要配置RedisCacheManager便可自动使用
+     * 如果名字叫其他的，便需要配置我们的myRedisCacheManager，这样在使用时才会使用我们配置的RedisTemplate
+     *
+     */
+    //@Primary // 如果有多个cacheManager，可以使用这个注解标志默认使用这个类为缓存管理器
+    @Bean
+    public RedisCacheManager myRedisCacheManager(RedisTemplate<Object, Object> myRedisTemplate){
+        RedisCacheManager cacheManager = new RedisCacheManager(myRedisTemplate);
+        cacheManager.setUsePrefix(true);
+        return cacheManager;
+    }
+}
+```
+
+4）测试
+
+![1572686337761](../image/1572686337761.png)
+
+可以看到成功保存为我们想要的数据，
+
+但是如果调用下面这个方法，就会报错
+
+```java
+@Cacheable(/*cacheNames = "emp"*/)
+public Employee getById(Integer id)
+```
+
+因为我们设置的RedisTemplate无法将Integer转为String，便需要将`redisTemplate.setKeySerializer(new StringRedisSerializer());`这段代码改为``redisTemplate.setKeySerializer(jackson2JsonRedisSerializer);``但是没必要，因为按照规定，不能使用数字来做键，一般都是使用String字符串的，如果真有这么特殊的要求，那就只能修改了！
+
+### 编码使用缓存
+
+我们刚刚全部使用的注解的方式进行缓存处理，其实使用编码也很简单
+
+```java
+public class EmpService {   
+    @Autowired    
+    private EmployeeDao employeeDao;  
+    
+    @Autowired    
+    private RedisCacheManager redisCacheManager;
+    
+    public Employee getBylastName(String lastName){
+        Employee employee = employeeDao.getBylastName(lastName);
+        // 使用缓存管理器获取缓存
+        Cache cache = redisCacheManager.getCache("emp");
+        // 使用Cache进行缓存操作
+        cache.put("emp:test",employee);
+        return employee;
+    }
+}
+```
+
+测试：
+
+![1572687921339](../image/1572687921339.png)
+
+正确保存到redis中
+
