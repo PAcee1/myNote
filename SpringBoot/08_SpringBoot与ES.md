@@ -107,7 +107,11 @@ NoNodeAvailableException[None of the configured nodes are available]
 
 ![1572766598000](../image/1572766598000.png)
 
-发现springBoot2.1.x使用的spring data es是3.1.x适配es6.x，而2.0.x使用3.0.x适配ES5.x，SpringBoot1.5.x就只能使用ES2.4.x的版本了
+==**发现springBoot2.1.x使用的spring data es是3.1.x适配es6.x，**==
+
+==**而2.0.x使用3.0.x适配ES5.x，**==
+
+==**SpringBoot1.5.x就只能使用ES2.4.x的版本了**==
 
 ![1572766733295](../image/1572766733295.png)
 
