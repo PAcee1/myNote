@@ -120,8 +120,8 @@ cron表达式：
 配置文件配置：
 
 ```properties
-spring.mail.username=8709867@qq.com
-spring.mail.password=eglmivrhtaexcbbd
+spring.mail.username=xxx@qq.com
+spring.mail.password=xxx
 spring.mail.host=smtp.qq.com
 ```
 
@@ -149,8 +149,8 @@ class Springboot09TaskApplicationTests {
         mailMessage.setSubject("标题");
         mailMessage.setText("简单测试");
 
-        mailMessage.setFrom("8709867@qq.com");
-        mailMessage.setTo("2695884913@qq.com");
+        mailMessage.setFrom("xxx@qq.com");
+        mailMessage.setTo("xxx@qq.com");
         javaMailSender.send(mailMessage);
     }
 
@@ -163,8 +163,8 @@ class Springboot09TaskApplicationTests {
         helper.setSubject("标题");
         helper.setText("<div style='color:red;font-size:100px'>测试</div>",true);
 
-        helper.setFrom("8709867@qq.com");
-        helper.setTo("2695884913@qq.com");
+        helper.setFrom("xxx@qq.com");
+        helper.setTo("xxx@qq.com");
 
         // 设置附件
         helper.addAttachment("1.jpg",new File("E:\\download\\QR.png"));
