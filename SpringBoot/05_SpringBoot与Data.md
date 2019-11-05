@@ -316,7 +316,7 @@ public class DepartmentController {
 
 #### 驼峰问题
 
-需要使用自动配置，和往常一样，创建一个类，给容器中添加ConfigurationCustomizer组件
+1）需要使用自动配置，和往常一样，创建一个类，给容器中添加ConfigurationCustomizer组件
 
 ```java
 @org.springframework.context.annotation.Configuration
@@ -332,6 +332,12 @@ public class MybatisConfig {
         };
     }
 }
+```
+
+2）配置文件配置
+
+```properties
+mybatis.configuration.map-underscore-to-camel-case=true 
 ```
 
 #### @Mapper问题

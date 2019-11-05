@@ -269,7 +269,7 @@ public ConfigurableApplicationContext run(String... args) {
     SpringApplicationRunListeners listeners = getRunListeners(args);
     listeners.starting();
     try {
-        //2.创建并配置当前应用将要使用的Environment
+        //2.创建并配置当前应用将要使用的Environment，包括一些命令行参数等等
         ApplicationArguments applicationArguments = new DefaultApplicationArguments(
             args);
         ConfigurableEnvironment environment = prepareEnvironment(listeners,
