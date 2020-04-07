@@ -18,11 +18,11 @@
 
 举例来说，Bean是一台电脑，而`BeanDefinition`是电脑的配置单，我们光看一台电脑看不出来他的好坏，但是如果看配置单就可以了解这台电脑的详细配置，并且根据这个配置单可以轻松搭建出一台这样的电脑（Bean）。
 
-![1553242652992](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1553242652992.png)
+![1553242652992](../image/1553242652992.png)
 
 上面的例子比较贴切的展现出了Bean与`BeanDefinition`的关系，现在我们看看在具体实现中，`BeanDefinition`与xml是如何对应的呢？
 
-![1553242735301](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1553242735301.png)
+![1553242735301](../image/1553242735301.png)
 
 
 `依据上图可以看到，`BeanDefinition`对应了xml中的<bean>标签，又包含了两个新名词`PropertyValues`和BeanReference`，下面我们来介绍一下他们。
@@ -83,7 +83,7 @@ public class PropertyValues {
 
 经过了xml解析，BeanDefinition注册，BeanPostProcess注册后，BeanFactory的初始化工作基本完成了，这时BeanFactory就处于就绪状态，等待外部的调用，因为是懒加载，所以直到调用getBean()才会进行实例化对象。我们来看看Bean的实例化过程
 
-![1553245859825](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1553245859825.png)
+![1553245859825](../image/1553245859825.png)
 
 1. 用户调用getBean()方法，开始实例化bean对象
 2. 将配置文件中属性填充到bean中
@@ -98,5 +98,5 @@ public class PropertyValues {
 
 上述是完整的spring bean实例化的过程，在我们仿写项目中，此过程被简化
 
-![1553246057167](https://raw.githubusercontent.com/PAcee1/myNote/master/image/1553246057167.png)
+![1553246057167](../image/1553246057167.png)
 

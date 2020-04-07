@@ -1,14 +1,14 @@
-## 1.简介
+## 简介
 
 本文通过学习田小波的博客，进行总结记录，方便以后自己复习巩固。
 
 这篇文章分析了SpringIOC中`BeanFactory`的`getBean(String)`方法的实现细节。
 
-## 2.源码分析
+## 源码分析
 
 在本章的开始，也就是2.1节，会先分析`getBean(String)`方法的整体实现逻辑，对其调用的方法会在后续章节进行分析。
 
-### 2.1 俯瞰getBean(String)源码
+### 俯瞰getBean(String)源码
 
 本章先从整体看一下`getBean`方法的实现步骤，代码如下：
 
@@ -249,7 +249,7 @@ protected <T> T doGetBean(
 
 `getObjectForBeanInstance`：获取Bean实例，主要针对FactoryBean与普通Bean的处理
 
-### 2.2 转换BeanName
+### 转换BeanName
 
 转换BeanName的方法为`transformedBeanName(String name)`，主要是针对**name带了&符号的**，进行去掉，或者**设置了alias别名**的，进行转换，以防止`BeanFactory`找不到name对应的bean实例。
 
@@ -297,7 +297,7 @@ public String canonicalName(String name) {
 }
 ```
 
-### 2.2 从缓存中获取单例bean
+### 从缓存中获取单例bean
 
 对于单例bean，spring容器只会实例化一次，所以直接去缓存中取便可。
 
@@ -367,7 +367,7 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 
 后面还会细讲循环依赖
 
-### 2.2 合并父子BeanDefinition
+### 合并父子BeanDefinition
 
 Spring 支持配置继承，在标签中可以使用`parent`属性配置父类 bean。这样子类 bean 可以继承父类 bean 的配置信息，同时也可覆盖父类中的配置。比如下面的配置：
 
@@ -489,7 +489,7 @@ protected RootBeanDefinition getMergedBeanDefinition(
 
 
 
-### 2.2 获取Bean实例
+### 获取Bean实例
 
 `getObjectForBeanInstance()`主要用于对FactoryBean这种特殊Bean的处理，如果是普通Bean会直接返回。
 
@@ -651,7 +651,7 @@ private Object doGetObjectFromFactoryBean(final FactoryBean<?> factory, final St
 
 
 
-## 三、总结
+## 总结
 
 到此，SpringIOC获取单例Bean方面的分析就结束了，主要是从`getBean()`方法来看，因为这是外部调用获取单例的方法，然后再从`getBean`中所调用的方法进行查看，比如比较重要的`transformedBeanName`、 `getSingleton`、 `getMergedLocalBeanDefinition` 、`getObjectForBeanInstance`方法，并进行详细介绍。
 
