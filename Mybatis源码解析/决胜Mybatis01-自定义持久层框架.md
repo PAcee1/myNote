@@ -921,3 +921,163 @@ public class PbatisTest {
 这样，我们自定义的ORM框架就完成了，简易版Mybatis~
 
 具体实现代码可以查看Github： https://github.com/PAcee1/custom-mybatis 
+
+
+
+## 自定义持久层框架优化
+
+### 存在的问题
+
+在我们实际开发中，应该创建Dao接口与实现类，把实际Mybatis操作代码封装起来，我们看看用之前的形式如何实现：
+
+```java
+public interface IUserDao {
+
+    List<User> selectList();
+
+    User selectOne(User user);
+
+}
+
+public class UserDao implements IUserDao {
+    public List<User> selectList() {
+        String configPath = "sqlMapConfig.xml";
+        Resources resources = new Resources();
+        InputStream inputStream = resources.getResourceAsStream(configPath);
+        try {
+            SqlSessionFactory build = new SqlSessionFactoryBuilder().build(inputStream);
+            SqlSession sqlSession = build.openSession();
+
+            // 查询全部数据
+            List<User> list = sqlSession.selectList("user.selectList");
+            return list;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public User selectOne(User user) {
+        String configPath = "sqlMapConfig.xml";
+        Resources resources = new Resources();
+        InputStream inputStream = resources.getResourceAsStream(configPath);
+        try {
+            SqlSessionFactory build = new SqlSessionFactoryBuilder().build(inputStream);
+            SqlSession sqlSession = build.openSession();
+            Object o = sqlSession.selectOne("user.selectOne", user);
+            return (User) o;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return  null;
+    }
+}
+```
+
+明显发现有两个问题：
+
+- 对于构造SqlSession的代码存在大量重复
+- 对于statementId存在硬编码问题
+
+### 优化方案
+
+我们可以不用自己实现Dao接口的实现类，而是**使用代理模式**，让SqlSession进行生成。
+
+#### 实现思路
+
+比如，我们在`SqlSession`中添加`getMapper()`方法，通过代理，生成目标接口的代理实现类
+
+![1586674863575](image/1586674863575.png)
+
+通过上面的思路图，我们进行具体代理模式实现：
+
+#### 代码实现
+
+（1）修改`mapper`配置文件
+
+想要通过`类名+方法名`进行实现，我们必须把配置文件中的`namespace`设置成全限定类名，才能进行反射映射。
+
+并且方法名要和`mapper`中`id`一致，这里我们设置的是一致的，所以不需要修改了。
+
+```xml
+<mapper namespace="com.enbuys.dao.IUserDao"> <!-- 命名空间，mapper的唯一标识 -->
+
+    <!--  sql唯一标识：namespace.id ,user.selectList -->
+    <select id="selectList" resultType="com.enbuys.pojo.User">
+        select * from user
+    </select>
+
+    <select id="selectOne" resultType="com.enbuys.pojo.User" paramterType="com.enbuys.pojo.User">
+        select * from user where id = #{id} and username = #{username}
+    </select>
+
+</mapper>
+```
+
+（2）修改`SqlSession`
+
+添加`getMapper()`方法：
+
+```java
+	@Override
+    public <T> T getMapper(Class<?> clazz) {
+        // 使用JDK动态代理
+        Object proxyInstance = Proxy.newProxyInstance(this.getClass().getClassLoader(),
+            new Class[]{clazz}, new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    // 实际调用的还是SqlSession中的select方法，所以需要两个参数
+                    // 一、首先需要获取statementId = 全限定类名.方法名
+                    // 全限定类名
+                    String className = method.getDeclaringClass().getName();
+                    String methodName = method.getName();
+                    String statementId = className + "." + methodName;
+
+                    // 二、需要入参objects，就是args
+
+                    // 三、调用Select方法，这里我们需要判断使用哪个方法
+                    // 因为我们只是简单实现，所以这里我使用如果有参数执行selectOne，如果没有参数执行selectList
+                    // 在Mybatis中，对于这里的判断肯定更加严谨完善
+                    // 我们只是需要掌握它的思路，具体代码实现有兴趣可以进一步研究
+                    if(args != null){
+                        Object o = selectOne(statementId, args);
+                        return o;
+                    }else {
+                        List<Object> objects = selectList(statementId, args);
+                        return objects;
+                    }
+                }
+            });
+        return (T) proxyInstance;
+    }
+```
+
+（3）修改测试代码
+
+```java
+public class PbatisTest {
+    public static void main(String[] args) {
+        String configPath = "sqlMapConfig.xml";
+        Resources resources = new Resources();
+        InputStream inputStream = resources.getResourceAsStream(configPath);
+        try {
+            SqlSessionFactory build = new SqlSessionFactoryBuilder().build(inputStream);
+            SqlSession sqlSession = build.openSession();
+
+            // 使用代理类
+            IUserDao userDao = sqlSession.getMapper(IUserDao.class);
+            User one = userDao.selectOne(user);
+            System.out.println(one);
+
+            List<User> users = userDao.selectList();
+            System.out.println(users);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+![1586675832176](image/1586675832176.png)
+
+这样的话，我们的自定义框架基本优化完成了。
