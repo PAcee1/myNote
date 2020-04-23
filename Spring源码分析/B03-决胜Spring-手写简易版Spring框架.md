@@ -1,3 +1,5 @@
+> 源码地址：[Github源码]( https://github.com/PAcee1/custom-spring )
+
 ## 从案例开始分析原始开发方式的问题
 
 这里我们忘记Spring，看看以前Servlet是如何开发Web项目的，存在哪些问题，应该如何优化？
@@ -560,3 +562,116 @@ public void transfer(String fromCardNo, String toCardNo, int money) throws Excep
 ![1587635416457](image/1587635416457.png)
 
 成功抛出异常，并且数据库数据没有变动
+
+### 使用JDK代理实现AOP
+
+我们刚刚的代码会发现有很大的问题，如果有很多Service中方法，每个方法都需要写一模一样的事务控制代码，这就需要用到我们之前说的AOP了，将横切逻辑方法与业务逻辑方法分离开，使用代理技术将其业务方法增强。
+
+#### 创建代理工厂
+
+```java
+public class ProxyFactory {
+
+    private TransactionManager transactionManager;
+
+    public void setTransactionManager(TransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+
+    // 使用JDK动态代理，实现AOP增强
+    public Object getProxy(Object obj){
+        Object o = Proxy.newProxyInstance(obj.getClass().getClassLoader(),
+            obj.getClass().getInterfaces(),
+            new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    Object result = null;
+                    try {
+                        // 开启事物
+                        transactionManager.begin();
+                        System.out.println("开启事务");
+
+                        // 执行方法
+                        result = method.invoke(obj, args);
+
+                        // 提交事务
+                        transactionManager.commit();
+                        System.out.println("事务提交");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        // 出现异常后，回滚事物
+                        transactionManager.rollback();
+                        System.out.println("事务回滚");
+                        throw e; // 将异常抛出，告诉上层
+                    }
+                    return result;
+                }
+            });
+        return o;
+    }
+
+}
+```
+
+#### 修改Servlet创建Service方式
+
+改为使用代理工厂创建
+
+```java
+@WebServlet(name="transferServlet",urlPatterns = "/transferServlet")
+public class TransferServlet extends HttpServlet {
+
+    // 1. 实例化service层对象
+    //private TransferService transferService = new TransferServiceImpl();
+
+    // 从BeanFactory取Service
+    //private TransferService transferService = (TransferService) BeanFactory.getBean("transferService");
+
+    // 使用AOP生成代理Service
+    private ProxyFactory proxyFactory = (ProxyFactory) BeanFactory.getBean("proxyFactory");
+    private TransferService transferService = (TransferService) proxyFactory.getProxy(BeanFactory.getBean("transferService"));
+    
+    //···
+}
+```
+
+### 代码最终完善
+
+这里我将之前写的`ConnectionUtils`，`TransactionManager`，`ProxyFactory`都使用IOC容器进行管理
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--跟标签beans，里面配置一个又一个的bean子标签，每一个bean子标签都代表一个类的配置-->
+<beans>
+    <!--id标识对象，class是类的全限定类名-->
+    <bean id="accountDao" class="com.enbuys.dao.impl.JdbcAccountDaoImpl">
+        <property name="ConnectionUtils" ref="connectionUtils"></property>
+    </bean>
+    <bean id="transferService" class="com.enbuys.service.impl.TransferServiceImpl">
+        <!--set+ name 之后锁定到传值的set方法了，通过反射技术可以调用该方法传入对应的值-->
+        <property name="AccountDao" ref="accountDao"></property>
+    </bean>
+
+    <bean id="connectionUtils" class="com.enbuys.utils.ConnectionUtils">
+        <!--set+ name 之后锁定到传值的set方法了，通过反射技术可以调用该方法传入对应的值-->
+        <property name="AccountDao" ref="accountDao"></property>
+    </bean>
+
+    <bean id="transactionManager" class="com.enbuys.utils.TransactionManager">
+        <!--set+ name 之后锁定到传值的set方法了，通过反射技术可以调用该方法传入对应的值-->
+        <property name="ConnectionUtils" ref="connectionUtils"></property>
+    </bean>
+
+    <bean id="proxyFactory" class="com.enbuys.factory.ProxyFactory">
+        <!--set+ name 之后锁定到传值的set方法了，通过反射技术可以调用该方法传入对应的值-->
+        <property name="TransactionManager" ref="transactionManager"></property>
+    </bean>
+</beans>
+```
+
+具体java代码就不放出来了，和之前IOC实现是一样的，具体可以看我的[Github源码]( https://github.com/PAcee1/custom-spring )
+
+## 总结我们的层次结构
+
+![1587653133306](image/1587653133306.png)
+
