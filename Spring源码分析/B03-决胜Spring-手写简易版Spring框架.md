@@ -138,12 +138,14 @@ public class JdbcAccountDaoImpl implements AccountDao {
 
 ![1587228307534](image/1587228307534.png)
 
-## 原始开发方式解决思路
+## 手写IOC实现
 
 我们刚刚发现，原始开发方式有两个重点问题
 
 - 一是new关键字将不同层级的类耦合在了一起
 - 二是没有添加事务控制
+
+这里我们来解决实例化耦合问题，这也是Spring的IOC解决的问题
 
 ### 实例化耦合解决思路
 
@@ -387,3 +389,174 @@ public class BeanFactory {
 }
 ```
 
+到此，IOC容器来解决实例化耦合就实现完成了，主要就是创建一个Bean工厂，来创建管理Bean，当类需要调用其他类时，直接从工厂中拿Bean即可
+
+## 手写AOP实现
+
+接着我们来解决Service层没有进行事物控制的问题
+
+### 事物控制解决思路
+
+数据库事物控制，归根结底是JDBC来管理，那么我们看一下现在是如何实现插入操作的：
+
+```java
+public class JdbcAccountDaoImpl implements AccountDao {
+
+    @Override
+    public Account queryAccountByCardNo(String cardNo) throws Exception {
+        //从连接池获取连接
+        Connection con = DruidUtils.getInstance().getConnection();
+        // ···
+    }
+    @Override
+    public int updateAccountByCardNo(Account account) throws Exception {
+        // 从连接池获取连接
+        Connection con = DruidUtils.getInstance().getConnection();
+        // ···
+    }
+}
+```
+
+1. 可以发现，每次查询，插入操作，都从数据库连接池取了新的连接，那么事物是一定不统一的
+2. 除了这个问题之外，我们会发现目前事物控制是放在Dao层，交给JDBC来控制，但是对于业务来说，事物应该放在Service层，因为一个Service方法可能会执行多条SQL语句。
+
+所以针对这两个问题，有以下两个解决思路：
+
+1. 让两次`update`操作使用同一个连接，两次操作使用一个线程，我们可以为**每个线程绑定一个连接**，在线程执行过程中都使用此连接
+2. JDBC获取连接时，默认是自动提交事务，可以再**创建连接时取消自动提交**，转而在Service层，手工调用`connection.commit()`，`connection.rollback()`控制事物
+
+### 事物问题代码初步实现
+
+#### 创建线程连接管理工具类
+
+使用`ThreadLocal`保存连接，这样各个线程间互不影响
+
+```java
+public class ConnectionUtils {
+
+    // 使用ThreadLoacl保存连接
+    private ThreadLocal<Connection> threadLocal = new ThreadLocal<>();
+
+    private static ConnectionUtils connectionUtils = new ConnectionUtils();
+
+    private ConnectionUtils(){}
+
+    // 单例模式，提供获取方法
+    public static ConnectionUtils getInstance(){
+        return connectionUtils;
+    }
+
+    /**
+     * 获取连接
+     * @return
+     */
+    public Connection getConnection(){
+        // 判断此线程是否为空，为空创建，不为空直接返回
+        Connection connection = threadLocal.get();
+        if(connection == null){
+            try {
+                connection = DruidUtils.getInstance().getConnection();
+                threadLocal.set(connection);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return connection;
+    }
+}
+```
+
+#### 创建事物管理类
+
+```java
+public class TransactionManager {
+
+    private TransactionManager(){}
+
+    private static TransactionManager transactionManager = new TransactionManager();
+
+    public static TransactionManager getInstance(){
+        return transactionManager;
+    }
+
+    // 设置手工提交事务
+    public void begin() throws SQLException {
+        ConnectionUtils.getInstance().getConnection().setAutoCommit(false);
+    }
+
+    // 提交事务
+    public void commit() throws SQLException {
+        ConnectionUtils.getInstance().getConnection().commit();
+    }
+
+    // 回滚事务
+    public void rollback() throws SQLException {
+        ConnectionUtils.getInstance().getConnection().rollback();
+    }
+}
+```
+
+#### 修改Service与Dao层代码
+
+Dao层：从线程中取连接，注意需要把close方法注释掉，不然连接就被关闭了
+
+```java
+public class JdbcAccountDaoImpl implements AccountDao { 
+    @Override
+    public Account queryAccountByCardNo(String cardNo) throws Exception {
+        //从连接池获取连接
+        //Connection con = DruidUtils.getInstance().getConnection();
+        // 从线程中获取连接，每个线程使用同一个连接
+        Connection con = ConnectionUtils.getInstance().getConnection();
+        // ···
+        //con.close();
+    }
+    @Override
+    public int updateAccountByCardNo(Account account) throws Exception {
+        // 从连接池获取连接
+        //Connection con = DruidUtils.getInstance().getConnection();
+        // 从线程中获取连接，每个线程使用同一个连接
+        Connection con = ConnectionUtils.getInstance().getConnection();
+        // ···
+        //con.close();
+    }
+}
+```
+Service层：使用事物管理，在Service进行事物控制
+
+```java
+@Override
+public void transfer(String fromCardNo, String toCardNo, int money) throws Exception {
+    try {
+        // 开启事物
+        TransactionManager.getInstance().begin();
+        Account from = accountDao.queryAccountByCardNo(fromCardNo);
+        Account to = accountDao.queryAccountByCardNo(toCardNo);
+
+        from.setMoney(from.getMoney() - money);
+        to.setMoney(to.getMoney() + money);
+
+        accountDao.updateAccountByCardNo(to);
+
+        // 测试异常
+        int a = 1/0;
+
+        accountDao.updateAccountByCardNo(from);
+
+        // 提交事务
+        TransactionManager.getInstance().commit();
+    } catch (Exception e) {
+        e.printStackTrace();
+        // 出现异常后，回滚事物
+        TransactionManager.getInstance().rollback();
+
+        throw e; // 将异常抛出，告诉上层
+    }
+}
+```
+
+这里我们在两次数据修改之间，添加了一个异常，测试下事物是否成功控制
+
+![1587635416457](image/1587635416457.png)
+
+成功抛出异常，并且数据库数据没有变动
