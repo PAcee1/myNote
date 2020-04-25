@@ -437,3 +437,168 @@ Spring的Bean默认不开启延迟加载：
 
 1. 加快容器启动
 2. 对于不常用的Bean，使用延迟加载可以节省空间资源
+
+### FactoryBean
+
+我们之前回顾了BeanFactory，是IoC容器的顶级接口，封装了最基础的方法规范，常用ApplicationContext子接口来进行容器的获取管理。
+
+Spring中Bean有两种，⼀种是普通Bean，⼀种是⼯⼚Bean（FactoryBean），FactoryBean可以⽣成某⼀个类型的Bean实例（返回给我们），也就是说我们可以借助于它⾃定义Bean的创建过程。
+
+Bean创建的三种⽅式中的静态⽅法和实例化⽅法和FactoryBean作⽤类似，FactoryBean使⽤较多，尤其在Spring框架⼀些组件中会使⽤，还有其他框架和Spring框架整合时使⽤。
+
+所以对于实例化过程相对复杂的Bean，我们可以使用FactoryBean的方式进行构建。
+
+下面代码演示FactoryBean是如何构建对象的
+
+User对象
+
+```java
+public class User {
+
+    private String name;
+    private Integer age;
+    private String company;
+    // get set
+}
+```
+
+UserFactoryBean
+
+```java
+public class UserFactoryBean implements FactoryBean<User> {
+
+    private String userInfo;
+
+    public void setUserInfo(String userInfo) {
+        this.userInfo = userInfo;
+    }
+
+    @Override
+    public User getObject() throws Exception {
+        User user = new User();
+        String[] strings = userInfo.split(",");
+        user.setName(strings[0]);
+        user.setAge(Integer.valueOf(strings[1]));
+        user.setCompany(strings[2]);
+        return user;
+    }
+
+    @Override
+    public Class<?> getObjectType() {
+        return null;
+    }
+
+    @Override
+    public boolean isSingleton() {
+        return true;
+    }
+}
+```
+
+我们需要实现`FactoryBean<T>`接口，并重新其方法
+
+xml配置
+
+```xml
+<bean id="userBean" class="com.enbuys.factory.UserFactoryBean">
+    <property name="userInfo" value="pace,20,ali"/>
+</bean>
+```
+
+测试获取Bean
+
+```java
+public class SpringTest {
+    public static void main(String[] args) {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+        Object userBean = applicationContext.getBean("userBean");
+
+        System.out.println(userBean);
+    }
+}
+```
+
+![1587788637051](image/1587788637051.png)
+
+可以看到，最终获取到的是User对象，而不是UserFactoryBean对象
+
+那这里可能就有疑问了，如何获取UserFactoryBean这个对象呢？
+
+只需再获取Bean时，id前加一个`&`符号即可
+
+```java
+Object userBean = applicationContext.getBean("&userBean");
+```
+
+![1587788724275](image/1587788724275.png)
+
+### 后置处理器
+
+Spring提供了两种后处理bean的接口，BeanPostProcessor和BeanFactoryPostProcessor。
+
+- BeanFactoryPostProcessor：BeanFactory工厂初始化后，进行的一些操作
+- BeanFactoryProcessor：Bean实例化后进行的一些操作，实际上时init方法前后的操作
+
+注意：这里关联着SpringBean生命周期，后面详细说
+
+#### BeanPostProcessor
+
+BeanPostProcessor是针对Bean级别的处理，可以针对某个具体的Bean
+
+```java
+public interface BeanPostProcessor {
+
+	@Nullable
+	default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+
+	@Nullable
+	default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+
+}
+```
+
+BeanPostProcessor提供了两个方法，分别在初始化前后执行，初始化时什么意思？其实就是init-method指定的方法前后执行。
+
+定义⼀个类实现了BeanPostProcessor，默认是会对整个Spring容器中所有的bean进⾏处理。如果要对具体的某个bean处理，可以通过⽅法参数判断，两个类型参数分别为Object和String，第⼀个参数是每个bean的实例，第⼆个参数是每个bean的name或者id属性的值。所以我们可以通过第⼆个参数，来判断我们将要处理的具体的bean。
+
+```java
+@Component
+public class MyBeanPostProcessor implements BeanPostProcessor {
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("init方法前");
+        return bean;
+    }
+
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("init方法后");
+        return bean;
+    }
+}
+```
+
+我们创建自定义后置处理器时，一定要注意将其加入到容器中才可以
+
+![1587790896275](image/1587790896275.png)
+
+注意：处理是发⽣在Spring容器的实例化和依赖注⼊之后。
+
+#### BeanFactoryPostProcessor
+
+BeanFactory的后置处理器，是针对BeanFactory进行的处理，经典应用是PropertyPlaceholderConfigurer
+
+![1587790991253](image/1587790991253.png)
+
+通过类图可以看到，多层继承实现后，有实现BeanFactoryPostProcessor接口，这个类是干嘛的呢？
+
+BeanFactory在加载后，会读取xml配置文件，然后将一个个标签放到`BeanDefinition`对象中保存，这个实现类后置处理器的类，就是用来读取xml中配置外部配置文件，然后将占位符替换的，比如之前的`jdbc.properties`。
+
+这就是BeanFactory后置处理器最经典的应用
+
+**BeanFactory读取xml配置，后置处理器将外部配置文件的占位符替换**
+
