@@ -219,7 +219,7 @@ public ConfigurableApplicationContext run(String... args) {
 }
 ```
 
-直接从run方法开始，因为事件很多，其实大同小异，所以我们只看starting事件
+直接从`run`方法开始，因为事件很多，其实大同小异，所以我们只看`starting`事件
 
 ```java
 class SpringApplicationRunListeners {
@@ -282,7 +282,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 
 ### 开始获取事件对应的监听器列表
 
-发布事件时，就来到了重点方法getApplicationListeners()，通过计算获取所有该事件的监听器们
+发布事件时，就来到了重点方法`getApplicationListeners()`，通过计算获取所有该事件的监听器们
 
 ```java
 protected Collection<ApplicationListener<?>> getApplicationListeners(
@@ -326,7 +326,7 @@ protected Collection<ApplicationListener<?>> getApplicationListeners(
 }
 ```
 
-继续进入重点方法retrieveApplicationListeners()获取监听器
+继续进入重点方法`retrieveApplicationListeners()`获取监听器
 
 ```java
 private Collection<ApplicationListener<?>> retrieveApplicationListeners(
@@ -348,6 +348,7 @@ private Collection<ApplicationListener<?>> retrieveApplicationListeners(
             if (retriever != null) {
                 retriever.applicationListeners.add(listener);
             }
+            // 如果该监听器绑定此事件，添加到集合中
             allListeners.add(listener);
         }
     }
@@ -359,13 +360,14 @@ private Collection<ApplicationListener<?>> retrieveApplicationListeners(
         retriever.applicationListeners.clear();
         retriever.applicationListeners.addAll(allListeners);
     }
+    // 返回集合
     return allListeners;
 }
 ```
 
 ### supportsEvent实际判断监听器与事件的方法
 
-继续进入supportsEvent()，判断此监听器，是否对当前事件感兴趣
+继续进入`supportsEvent()`，判断此监听器，是否对当前事件感兴趣
 
 ```java
 protected boolean supportsEvent(
@@ -384,7 +386,7 @@ protected boolean supportsEvent(
 
 ![1587980335666](image/1587980335666.png)
 
-当前类为ConfigFileApplicationListener，
+当前类为`ConfigFileApplicationListener`，
 
 ```java
 public class ConfigFileApplicationListener implements EnvironmentPostProcessor, SmartApplicationListener, Ordered {
@@ -393,9 +395,9 @@ public interface SmartApplicationListener extends ApplicationListener<Applicatio
 }
 ```
 
-这里可以发现它没有直接绑定感兴趣的事件，而是实现了SmartApplicationListener接口，此接口绑定事件为ApplicationEvent总接口，这里是因为此接口有一个supportsEventType方法，在此方法内部会写死具体实现类绑定的事件，后面会看到。
+这里可以发现它没有直接绑定感兴趣的事件，而是实现了`SmartApplicationListener`接口，此接口绑定事件为`ApplicationEvent`总接口，这里是因为此接口有一个`supportsEventType()`方法，在此方法内部会写死具体实现类绑定的事件，后面会看到。
 
-他不是GenericApplicationListener的子类，所以会调用第二个方法，创建适配器
+他不是`GenericApplicationListener`的子类，所以会调用第二个方法，创建适配器
 
 ```java
 public GenericApplicationListenerAdapter(ApplicationListener<?> delegate) {
@@ -418,7 +420,7 @@ private static ResolvableType resolveDeclaredEventType(ApplicationListener<Appli
 }
 ```
 
-然后我们回到supportsEvent方法
+然后我们回到`supportsEvent()`方法
 
 ```java
 protected boolean supportsEvent(
@@ -429,13 +431,13 @@ protected boolean supportsEvent(
     // 如果不是，则创建GenericApplicationListenerAdapter，Adapter适配器类
     GenericApplicationListener smartListener = (listener instanceof GenericApplicationListener ?
                                                 (GenericApplicationListener) listener : new GenericApplicationListenerAdapter(listener));
-    // 一、调用该监听器的supportsEventType，判断此监听器是否对此事件感兴趣
-    // 二、
+    // 一、判断此类是否为SmartApplicationListener子类，如果是调用该监听器的supportsEventType，如果不是判断是否绑定事件
+    // 二、判断此类是否为SmartApplicationListener子类，如果是调用该监听器的supportsSourceType，如果不是判断是绑定事件是否和当前事件相同
     return (smartListener.supportsEventType(eventType) && smartListener.supportsSourceType(sourceType));
 }
 ```
 
-我们首先看第一个判断，这里会判断此监听器是否实现SmartApplicationListener，如果实现直接调用实际监听器的supportsEventType()方法，因为我们直接看到了他是实现的，所以我们需要进入ConfigFileApplicationListener查看
+我们首先看第一个判断，这里会判断此监听器是否实现`SmartApplicationListener`，如果实现直接调用实际监听器的`supportsEventType()`方法，因为我们直接看到了他是实现的，所以我们需要进入`ConfigFileApplicationListener`查看
 
 ```java
 @Override
@@ -460,7 +462,7 @@ public boolean supportsEventType(Class<? extends ApplicationEvent> eventType) {
 }
 ```
 
-ConfigFileApplicationListener感兴趣的是ApplicationEnvironmentPreparedEvent事件，但是当前是Starting事件，所以返回false了。
+`ConfigFileApplicationListener`感兴趣的是`ApplicationEnvironmentPreparedEvent`事件，但是当前是`Starting`事件，所以返回`false`了。
 
 我们继续看第二个监听器
 
@@ -471,7 +473,7 @@ public class AnsiOutputApplicationListener
       implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
 ```
 
-它不是SmartApplicationListener子类，并且绑定ApplicationEnvironmentPreparedEvent事件
+它不是`SmartApplicationListener`子类，并且绑定`ApplicationEnvironmentPreparedEvent`事件
 
 有了之前的经验我们先进入第一个判断
 
@@ -492,7 +494,7 @@ public boolean supportsEventType(ResolvableType eventType) {
 }
 ```
 
-因为它不是SmartApplicationListener子类，并且绑定了事件，所以这里会返回true，进入第二个判断
+因为它不是`SmartApplicationListener`子类，并且绑定了事件，所以这里会返回true，进入第二个判断
 
 ```java
 smartListener.supportsSourceType(sourceType));
@@ -571,6 +573,8 @@ private void doInvokeListener(ApplicationListener listener, ApplicationEvent eve
 }
 ```
 
-就会调用监听器内部的onApplicationEvent()方法了，到此监听器的源码解析大致结束了
+就会调用监听器内部的`onApplicationEvent()`方法了，到此监听器的源码解析大致结束了
 
 ### SpringBoot监听器流程总结
+
+![1587993882684](image/1587993882684.png)
