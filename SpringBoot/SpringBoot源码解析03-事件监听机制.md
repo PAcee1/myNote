@@ -77,6 +77,7 @@ public class WeatherEventMulticaster implements EventMulticaster {
 
     @Override
     public void multicastEvent(WeatherEvent event) {
+        // 发布事件时，调用所有监听器中的方法
         listenerList.forEach(i -> i.onWeatherEvent(event));
     }
 
@@ -511,6 +512,8 @@ public boolean supportsSourceType(@Nullable Class<?> sourceType) {
 }
 ```
 
+因为他不是`SmartApplicationListener`的子类，所以会判断当前事件是否与该监听器绑定的一致，因为其绑定的`ApplicationEnvironmentPreparedEvent`与当前`Starting`事件不符，所以也会返回`false`。
+
 所以，到此我们就大概了解了SpringBoot内部是如何获取一个事件的监听器列表的。之后会将其总结为流程图，更好的理解。
 
 ### 调用监听器
@@ -535,9 +538,11 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
         // 重点方法getApplicationListeners，获取该事件绑定的所有监听器
         for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
             if (executor != null) {
+                // 不为null，多线程异步调用
                 executor.execute(() -> invokeListener(listener, event));
             }
             else {
+                // 为null，同步调用监听器
                 invokeListener(listener, event);
             }
         }
@@ -578,3 +583,65 @@ private void doInvokeListener(ApplicationListener listener, ApplicationEvent eve
 ### SpringBoot监听器流程总结
 
 ![1587993882684](image/1587993882684.png)
+
+## 自定义监听器实现
+
+向SpringBoot中添加自定义监听器，其实和之前自定义初始化器有着一样的三种注册方式，这里我们演示最经典的一种，也就是配置在`spring.fatories`工厂的方式：
+
+实现自定义监听器时，有两种实现方式
+
+- 实现`ApplicationListener<T extends ApplicationEvent>`
+- 实现`SmartApplicationListener`，通过重写方法进行事件绑定
+
+### 创建自定义监听器
+
+```java
+@Order(1)
+public class FirstListener implements ApplicationListener<ApplicationStartedEvent> {
+    @Override
+    public void onApplicationEvent(ApplicationStartedEvent event) {
+        System.out.println("自定义监听器FirstListener，监听到事件，运行");
+    }
+}
+
+@Order(2)
+public class SecondListener implements SmartApplicationListener {
+
+    @Override
+    public boolean supportsEventType(Class<? extends ApplicationEvent> eventType) {
+        return ApplicationPreparedEvent.class.isAssignableFrom(eventType) ||
+            ApplicationStartedEvent.class.isAssignableFrom(eventType);
+    }
+
+    @Override
+    public void onApplicationEvent(ApplicationEvent event) {
+        System.out.println("自定义监听器SecondListener，监听到事件，运行");
+    }
+}
+```
+
+### 注册自定义监听器
+
+这里注册在`spring.factories`中
+
+```properties
+#org.springframework.context.ApplicationContextInitializer=com.enbuys.springboot.initialize.FirstInitialize
+org.springframework.context.ApplicationListener=com.enbuys.springboot.listener.FirstListener,\
+  com.enbuys.springboot.listener.SecondListener
+```
+
+![1588040503164](image/1588040503164.png)
+
+运行时会发现，因为第二个监听器实现SmartApplicationListener，配置绑定了两个事件，所以运行了两次
+
+### 总结
+
+- 自定义实现监听器有三种注册方式
+  - `spring.factories`
+  - `application.properties`
+  - `SpringApplication.addListeners()`
+- 有两种实现方式
+  - `ApplicationListener<Event>`：在泛型中绑定事件，**只能绑定一种事件**
+  - `SmartApplicationListener#supportsEventType()`：在方法中绑定事件，**可以绑定多个事件**
+- 使用Order排序，值越小优先级越高
+- 配置在`application.properties`中的优先执行
