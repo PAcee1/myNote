@@ -980,7 +980,7 @@ protected BeanWrapper instantiateBean(final String beanName, final RootBeanDefin
 
 #### Bean实例化流程图
 
-![1588123152495](image/1588123152495.png)
+![1588124087241](image/1588124087241.png)
 
 ### finishRefresh()
 
