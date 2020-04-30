@@ -84,3 +84,21 @@
 ### 启动加载器实现有什么差异点
 
 ### 启动加载器的调用时机
+
+## 属性配置
+
+### SpringBoot属性配置的方式
+
+### SpringBoot中Environment对象如何加载到容器中
+
+### 某个属性集如spring_application_json是何时被加载的
+
+### 介绍下SpringProfile
+
+### SpringProfile使用时注意事项，为什么？
+
+- default属性不能配在application.properties中
+- default属性与active互斥
+
+### SpringProfile的加载流程
+
