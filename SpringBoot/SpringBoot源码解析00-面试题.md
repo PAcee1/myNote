@@ -102,3 +102,26 @@
 
 ### SpringProfile的加载流程
 
+## SpringBoot异常处理
+
+### 介绍下SpringBoot异常处理器类结构
+
+- SpringBootExceptionReporter：顶层异常处理实现接口
+  - FailureAnalyzers
+    - FailureAnalyzer -》 AbstractFailureAnalyzer：有大量实际异常处理器实现
+    -  FailureAnalysisReporter  -》  LoggingFailureAnalysisReporter 
+-  ExitCodeExceptionMapper ：退出状态码设置接口
+
+### 介绍下SpringBoot异常处理器实现原理
+
+### 介绍下SpringBoot异常处理流程
+
+### SpringBoot异常处理流程中有哪些需要注意的
+
+- 在handleExitCode中，如果退出状态码为0，就不会进行一些事件发布等处理
+  - 这里需要自定义实现ExitCodeExceptionMapper接口，针对异常进行退出码的设置
+
+- listener.failed发布事件不一定会执行，listener必须初始化才可以执行
+- 也不一定每次都会移出Shutdown钩子方法，比如实现了才会
+
+### 如果自定义实现SpringBoot异常处理器
