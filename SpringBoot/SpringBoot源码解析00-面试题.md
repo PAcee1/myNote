@@ -125,3 +125,30 @@
 - 也不一定每次都会移出Shutdown钩子方法，比如实现了才会
 
 ### 如果自定义实现SpringBoot异常处理器
+
+## SpringBoot配置类
+
+### 配置类是什么？有哪些作用
+
+@Configuration等注解标志的类为配置类
+
+主要作用是替代传统开发方式中的配置文件
+
+### 配置类常用的注解有哪些
+
+### SpringBoot中配置类何时配加载的
+
+run -> refreshContext() -> invokeBeanFactoryPostProcessor -> ConfigurationClassPostProcessor -> processConfigBeanDefinitions()
+
+### SpringBoot配置类的处理流程
+
+### 配置类处理包括哪些内容
+
+八大类
+
+### 详细说一些注解的处理流程，比如@Import
+
+- @Import分为三种情况
+- ImportSelector & DeferredImportSelector # selectImports，获取String数组，存放类全限定类名，会判断此类是否为配置类
+- ImportBeanDefinitionRegistrar，此方法中会向容器注册Bean，实际代码会获取注册的Bean，加载判断
+- @Import，属性中的类名判断是否为配置类，进行加载

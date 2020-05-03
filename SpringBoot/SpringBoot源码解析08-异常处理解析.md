@@ -102,12 +102,15 @@ private void handleRunFailure(ConfigurableApplicationContext context, Throwable 
         try {
             // 1.根据异常获取错误码
             handleExitCode(context, exception);
+            // 2.如果监听器已经加载，发布ApplicationFailedEvent事件
             if (listeners != null) {
                 listeners.failed(context, exception);
             }
         }
         finally {
+            // 3.处理异常
             reportFailure(exceptionReporters, exception);
+            // 4.关闭上下文
             if (context != null) {
                 context.close();
             }
@@ -116,6 +119,7 @@ private void handleRunFailure(ConfigurableApplicationContext context, Throwable 
     catch (Exception ex) {
         logger.warn("Unable to close ApplicationContext", ex);
     }
+    // 5.重新抛出异常
     ReflectionUtils.rethrowRuntimeException(exception);
 }
 ```
@@ -230,6 +234,8 @@ private void reportFailure(Collection<SpringBootExceptionReporter> exceptionRepo
 
 这里最关键的代码为：`reporter.reportException()`：即调用异常处理器处理异常，并对异常处理情况进行记录
 
+默认会进入`FailureAnalyzers`的实现类，如果有自定义异常处理器，也会循环加载处理异常
+
 ```java
 @Override
 public boolean reportException(Throwable failure) {
@@ -240,7 +246,7 @@ public boolean reportException(Throwable failure) {
 }
 ```
 
-主要分为两步
+对于`FailureAnalyzers`来说，处理异常主要分为两步
 
 - `analyze`：通过具体异常处理器，进行异常处理
 
