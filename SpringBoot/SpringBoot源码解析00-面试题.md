@@ -152,3 +152,23 @@ run -> refreshContext() -> invokeBeanFactoryPostProcessor -> ConfigurationClassP
 - ImportSelector & DeferredImportSelector # selectImports，获取String数组，存放类全限定类名，会判断此类是否为配置类
 - ImportBeanDefinitionRegistrar，此方法中会向容器注册Bean，实际代码会获取注册的Bean，加载判断
 - @Import，属性中的类名判断是否为配置类，进行加载
+
+## SpringBootWeb容器
+
+### 简述下Servlet容器启动流程
+
+### 介绍下SpringBoot是如何自动装配的
+
+### AutoConfigurationImportSelector何时被处理
+
+- run -》 refreshContext -》 invokeBeanFactoryPostProcessor -》 ConfigurationClassPostProcessor-》ConfigurationClassPaser
+
+### 为何SpringBoot框架默认启动是Tomcat
+
+Tomcat满足条件，所以会被加载到容器中，并使用@Bean注入一个Tomcat的Web工厂，在创建Web容器时，就会拿Tomcat的工厂创建Tomcat
+
+### Web容器自定义配置生效的原理
+
+- WebServerFactoryCustomizer：配置属性后 -》 注入到ServerProperties属性类中 -》 自动配置类会加载WebServerFactoryCustomizer实现类 -》 ServerProperties成为实现类的属性
+- 创建Web容器：先获取Web容器工厂 -》 doGetBean -》 BeanPostProcess -》 WebServerFactoryCustomizerBeanPostProcessor -》getCustomizers() -》 依次获得所有实现类 -》 调用customize方法进行定制化处理
+
