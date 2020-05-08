@@ -177,3 +177,173 @@ public class AAA {
 ```
 
 这样，就简单实现了一个自定义的判断是否生效的注解
+
+## 自定义Starter
+
+SpringBoot有很多starter插件，比如mybatis，redis，特点就是可拔插，通过简单的maven控制，就可以实现功能的添加，只需在环境中配置一些属性，就可以直接使用
+
+我们先制作一个简单的starter，然后再分析starter是如何被加载的
+
+### 制作Starter
+
+首先新创建一个工程，为SpringBoot项目，添加依赖
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.2.7.RELEASE</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.enbuys</groupId>
+    <artifactId>demo-spring-boot-starter</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>demo-spring-boot-starter</name>
+    <description>Demo project for Spring Boot</description>
+
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+```
+
+然后就可以进行自定义Starter的制作，上述依赖中最关键的就是`AutoConfiguration`依赖
+
+创建数据源，主要目的为从配置文件取数据
+
+```java
+@ConfigurationProperties(prefix = "weather")
+public class WeatherSource {
+    private String type;
+    private String rate;
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getRate() {
+        return rate;
+    }
+
+    public void setRate(String rate) {
+        this.rate = rate;
+    }
+}
+```
+
+创建Service，提供给外部使用的接口
+
+```java
+public class WeatherService {
+
+    private WeatherSource weatherSource;
+
+    public WeatherService(WeatherSource weatherSource){
+        this.weatherSource = weatherSource;
+    }
+
+    public String getType(){
+        return weatherSource.getType();
+    }
+
+    public String getRate(){
+        return weatherSource.getRate();
+    }
+}
+```
+
+自动配置类
+
+```java
+@Configuration
+@EnableConfigurationProperties(WeatherSource.class)
+@ConditionalOnProperty(name = "weather.enable",havingValue = "enable")
+public class WeatherAutoConfiguration {
+
+    @Autowired
+    private WeatherSource weatherSource;
+
+    @Bean
+    public WeatherService weatherService(){
+        return new WeatherService(weatherSource);
+    }
+}
+```
+
+自动配置类很关键，可以看到他启用了数据源，这样就会把数据源加载的容器，然后使用@Bean的方式注入Service，这样外部就可以使用Service进行操作
+
+添加自动配置类到`spring.factories`中
+
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.enbuys.demospringbootstarter.weather.WeatherAutoConfiguration
+```
+
+然后使用`maven clean install`命令，将jar包打到仓库，这样别的工厂就可以引用了
+
+到此，自定义的Starter就制作完毕，最关键有三点
+
+- 使用`@ConfigurationProperties`，制作一个数据源对象，获取配置文件中的数据
+- 创建自动配置类，使用`@Bean`，`@EnableConfigurationProperties`，向容器添加接口
+- 将自动配置类添加到工厂中
+
+接着就是测试，测试很简单，只需在springboot项目依赖中，引入我们刚刚创建的starter即可
+
+```xml
+<dependency>
+    <groupId>com.enbuys</groupId>
+    <artifactId>demo-spring-boot-starter</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+</dependency>
+```
+
+![1588936464670](image/1588936464670.png)
+
+### Starter加载原理
+
+Starter的加载原理其实我们之前都已经学习过了，因为它主要使用自动配置类，然后装载到工厂中，通过前面的知识我们可以知道：
+
+- SpringBoot启动时，在run -》 refreshContext -》 invokeBeanFactoryPostProcessor执行后置处理时
+- 会执行到ConfigurationClassPostProcessor，就会使用ConfigurationClassPaser对配置类进行解析
+- 其中就会读取spring.factories文件中的EnableAutoConfiguration实现类，进行加载
+- 再递归实现类中是否添加了新的配置类
+
+这样就将自动配置类加载到容器中，这也是为什么接口可以直接@Autowired使用的原因
