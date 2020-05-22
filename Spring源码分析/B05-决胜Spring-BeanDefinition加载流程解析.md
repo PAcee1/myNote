@@ -1,3 +1,7 @@
+本章我们会介绍IoC容器依赖注入前的三个阶段，即配置文件读取，解析，将BeanDefinition注册到容器中，等待后续加载成Bean对象。
+
+![1590118020363](image/1590118020363.png)
+
 再进行Spring IOC流程解析前，我们需要对一些必要的类进行了解
 
 ## Bean
@@ -113,7 +117,7 @@ Spring对于命名非常规范，在一个类中，以`do`开头的，一定是�
 
 这里主要看一下注册BeanDefinition到容器中
 
-### BeanDefinition加载解析与注册
+## BeanDefinition加载解析与注册
 
 ```java
 public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
