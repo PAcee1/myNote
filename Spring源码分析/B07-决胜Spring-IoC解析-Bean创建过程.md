@@ -1,5 +1,9 @@
 上一节，我们大体研究了Spring IoC容器初始化的过程，但是我们留了一个点，就是在finishBeanFactoryInitialization方法中，会进行所有单例非懒加载的Bean实例的创建，我们这一节，就是对其中方法实现进行解析。
 
+首先我们先看一下Bean创建过程中大体流程，以及相关类接口
+
+![1590477430764](image/1590477430764.png)
+
 ## doGetBean
 
 首先我们直接从AbstractBeanFactory中的doGetBean方法进攻
@@ -348,7 +352,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
 
 此时A依赖B，B依赖A，那么在B创建时，就会使用doGetBean(A)
 
-回顾doGetBean方法
+回顾`doGetBean`方法
 
 ```java
 if (isPrototypeCurrentlyInCreation(beanName)) {
@@ -362,9 +366,9 @@ if (isPrototypeCurrentlyInCreation(beanName)) {
 
 ### 单例模式Setter注入
 
-当doCreateBean时，如果满足提前暴露条件，会将创建出的无属性Bean使用addSingletonFactory方法存入三级缓存中
+当doCreateBean时，如果满足提前暴露条件，会将创建出的无属性Bean使用`addSingletonFactory`方法存入三级缓存中
 
-这时再当A依赖B，B依赖A情况出现时，调用doGetBean(A)
+这时再当A依赖B，B依赖A情况出现时，调用`doGetBean(A)`
 
 ```java
 // 从一级，二级，三级缓存中取当前Bean，查看缓存是否存在
@@ -387,7 +391,7 @@ Object sharedInstance = getSingleton(beanName);
 instanceWrapper = createBeanInstance(beanName, mbd, args);
 ```
 
-而此时就会进行依赖注入，但是当前并没有走到populateBean()这个方法，就更别说addSingletonFactory方法的执行了。
+而此时就会进行依赖注入，但是当前并没有走到`populateBean()`这个方法，就更别说`addSingletonFactory`方法的执行了。
 
 所以在B获取A依赖时，无法从缓存中获取A实例，就会一直循环依赖导致报错。
 
@@ -398,3 +402,103 @@ instanceWrapper = createBeanInstance(beanName, mbd, args);
 Spring仅支持单例模式Setter循环依赖
 
 ![1590395456353](image/1590395456353.png)
+
+## populateBean
+
+该方法主要用作在Bean创建后的依赖注入，方法内部调用很深比较复杂，我们大致了解下大体框架流程即可
+
+### 流程图
+
+![1590476544744](image/1590476544744.png)
+
+### 源码解析
+
+```java
+protected void populateBean(String beanName, RootBeanDefinition mbd, @Nullable BeanWrapper bw) {
+
+   // 判断该Bean是否实现InstantiationAwareBeanPostProcessors接口
+   // 如果有实现，调用postProcessAfterInstantiation方法
+   // 该方法可以在属性设置前，去修改Bean的属性值，并且可以控制是否让Spring继续向下设置属性
+   // 即可以接管Spring设置属性的权利
+   if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
+      for (BeanPostProcessor bp : getBeanPostProcessors()) {
+         if (bp instanceof InstantiationAwareBeanPostProcessor) {
+            InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
+            if (!ibp.postProcessAfterInstantiation(bw.getWrappedInstance(), beanName)) {
+               continueWithPropertyPopulation = false;
+               break;
+            }
+         }
+      }
+   }
+
+   if (!continueWithPropertyPopulation) {
+      return;
+   }
+
+   // 从BeanDefinition中取出属性值
+   // 如果是使用注解，该属性值会被实例化，但是为空
+   PropertyValues pvs = (mbd.hasPropertyValues() ? mbd.getPropertyValues() : null);
+
+   // 判断Bean是否具有Autowired的属性
+   // 注意此处不是@Autowired，而是xml形式的配置<bean ··· autowire="byName"/>
+   // 因为@Autowired再创建Bean的时候调用后置处理器，就将其属性值保存到meta容器中了
+   int resolvedAutowireMode = mbd.getResolvedAutowireMode();
+   if (resolvedAutowireMode == AUTOWIRE_BY_NAME || resolvedAutowireMode == AUTOWIRE_BY_TYPE) {
+      MutablePropertyValues newPvs = new MutablePropertyValues(pvs);
+      // Add property values based on autowire by name if applicable.
+      // 使用ByName形式解析注入属性值
+      if (resolvedAutowireMode == AUTOWIRE_BY_NAME) {
+         autowireByName(beanName, mbd, bw, newPvs);
+      }
+      // 使用ByType形式解析注入属性值
+      if (resolvedAutowireMode == AUTOWIRE_BY_TYPE) {
+         autowireByType(beanName, mbd, bw, newPvs);
+      }
+      pvs = newPvs;
+   }
+
+   // 再次判断是否实现InstantiationAwareBeanPostProcessors接口
+   boolean hasInstAwareBpps = hasInstantiationAwareBeanPostProcessors();
+   // 判断是否具有depends-on，Spring3后弃用
+   boolean needsDepCheck = (mbd.getDependencyCheck() != AbstractBeanDefinition.DEPENDENCY_CHECK_NONE);
+
+   PropertyDescriptor[] filteredPds = null;
+   // 如果实现了接口，调用postProcessProperties为其属性赋值
+   // 注意，这里会为注解和xml配置方式的一起赋值
+   // 对于注解，会使用AutowiredAnnotationPostProcessor的此方法进行属性的赋值
+   if (hasInstAwareBpps) {
+      if (pvs == null) {
+         pvs = mbd.getPropertyValues();
+      }
+      for (BeanPostProcessor bp : getBeanPostProcessors()) {
+         if (bp instanceof InstantiationAwareBeanPostProcessor) {
+            InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
+            PropertyValues pvsToUse = ibp.postProcessProperties(pvs, bw.getWrappedInstance(), beanName);
+            if (pvsToUse == null) {
+               if (filteredPds == null) {
+                  filteredPds = filterPropertyDescriptorsForDependencyCheck(bw, mbd.allowCaching);
+               }
+               pvsToUse = ibp.postProcessPropertyValues(pvs, filteredPds, bw.getWrappedInstance(), beanName);
+               if (pvsToUse == null) {
+                  return;
+               }
+            }
+            pvs = pvsToUse;
+         }
+      }
+   }
+   // 依赖检查，depends-on，3以后弃用
+   if (needsDepCheck) {
+      if (filteredPds == null) {
+         filteredPds = filterPropertyDescriptorsForDependencyCheck(bw, mbd.allowCaching);
+      }
+      checkDependencies(beanName, mbd, filteredPds, pvs);
+   }
+
+   if (pvs != null) {
+      // 将PropertyValues中的值赋值到Bean中
+      applyPropertyValues(beanName, mbd, bw, pvs);
+   }
+}
+```
