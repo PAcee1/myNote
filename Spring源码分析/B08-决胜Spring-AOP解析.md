@@ -18,7 +18,7 @@
   - 调用时机：`createBean `-》  `resolveBeforeInstantiation `-》 `applyBeanPostProcessorsBeforeInstantiation`
   - 方法功能：使用户可以接收Bean的创建逻辑，而不是交给Spring创建
 - `postProcessAfterInstantiation`
-  - 调用时机：`createBean `-》  `doCreateBean `-》 `populateBean `-》 `postProcessAfterInstantiation`
+  - 调用时机：`createBean `-》  `doCreateBean `-》 `initializeBean `-》 `postProcessAfterInstantiation`
   - 方法功能：在Spring为属性注入值之前，让用户可以接手注入值的权利，并且可以控制在之后是否还需要Spring进行属性注入
 - `postProcessProperties`
   - 调用时机：`createBean `-》  `doCreateBean `-》 `populateBean `-》`postProcessProperties`
@@ -448,3 +448,159 @@ public Advisor getAdvisor(Method candidateAdviceMethod, MetadataAwareAspectInsta
 ![1590571732773](image/1590571732773.png)
 
 ## 将横切逻辑织入到目标Bean
+
+将横切逻辑织入到Bean中，其实就是生成代理对象，其入口是在doCreateBean的popularBean属性注入后，执行initializeBean时，会调用后置处理器的postProcessAfterInitialization方法
+
+所以我们直接去AbstractAutoProxyCreator中查看该方法
+
+```java
+@Override
+public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
+   if (bean != null) {
+      // 从缓存中取key
+      Object cacheKey = getCacheKey(bean.getClass(), beanName);
+      // 如果是循环依赖提前暴露的Bean，会在getEarlyBeanReference中生成代理类
+      // 这里就是判断bean不是提前暴露的Bean，才会使用下面的wrapIfNecessary生成
+      if (this.earlyProxyReferences.remove(cacheKey) != bean) {
+         // 将横切逻辑织入Bean，生成返回代理对象
+         return wrapIfNecessary(bean, beanName, cacheKey);
+      }
+   }
+   return bean;
+}
+
+protected Object wrapIfNecessary(Object bean, String beanName, Object cacheKey) {
+    // 一系列校验
+    if (StringUtils.hasLength(beanName) && this.targetSourcedBeans.contains(beanName)) {
+        return bean;
+    }
+    if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
+        return bean;
+    }
+    if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
+        this.advisedBeans.put(cacheKey, Boolean.FALSE);
+        return bean;
+    }
+
+    // 获取筛选出来的Advisors
+    // 即获取切点表达式与该Bean有关系的Advisor出来
+    Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
+    // 筛选后，判断是否为null
+    if (specificInterceptors != DO_NOT_PROXY) {
+        this.advisedBeans.put(cacheKey, Boolean.TRUE);
+        // 不为null，创建代理对象返回
+        Object proxy = createProxy(
+            bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
+        this.proxyTypes.put(cacheKey, proxy.getClass());
+        return proxy;
+    }
+
+    this.advisedBeans.put(cacheKey, Boolean.FALSE);
+    return bean;
+}
+```
+
+通过源码查看，发现主要有两个重要方法，
+
+- 筛选和此Bean有关的横切逻辑getAdvicesAndAdvisorsForBean
+- 生成代理对象createProxy
+
+对于如何筛选和Bean有关的横切逻辑的源码，比较复杂，这里不做研究了，大体就是对表达式进行解析，然后判断传入的Bean是否与表达式配置的全限定类型相关
+
+### 生成代理对象
+
+```java
+protected Object createProxy(Class<?> beanClass, @Nullable String beanName,
+      @Nullable Object[] specificInterceptors, TargetSource targetSource) {
+
+   if (this.beanFactory instanceof ConfigurableListableBeanFactory) {
+      AutoProxyUtils.exposeTargetClass((ConfigurableListableBeanFactory) this.beanFactory, beanName, beanClass);
+   }
+
+   // 创建一个ProxyFactory，为创建代理类的工厂
+   ProxyFactory proxyFactory = new ProxyFactory();
+   // 从ProxyConfig中获取相关配置
+   proxyFactory.copyFrom(this);
+
+   // 判断proxyTargetClass属性是否为true
+   // true直接使用cglib进行动态代理
+   // false会进入方法
+   if (!proxyFactory.isProxyTargetClass()) {
+      // 判断该Bean是否有接口实现，如果没有，设置proxyTargetClass为true
+      // 使用cglib创建
+      if (shouldProxyTargetClass(beanClass, beanName)) {
+         proxyFactory.setProxyTargetClass(true);
+      }
+      // 如果存在接口，使用JDK动态代理实现
+      else {
+         // 将接口全部存入ProxyFactory中
+         evaluateProxyInterfaces(beanClass, proxyFactory);
+      }
+   }
+
+   // 主要用来包装Advisor
+   // 因为Advisor有三种，Advice，Advisor，Intercept
+   // 需将三种全部包装为Advisor
+   Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
+   proxyFactory.addAdvisors(advisors);
+   proxyFactory.setTargetSource(targetSource);
+   // 用户可以自定义实现此接口，实现自定义生成代理类的配置
+   customizeProxyFactory(proxyFactory);
+
+   proxyFactory.setFrozen(this.freezeProxy);
+   // 这里主要判断前期是否已经筛选过Advisor了，因为筛选过所以为true
+   if (advisorsPreFiltered()) {
+      proxyFactory.setPreFiltered(true);
+   }
+
+   // 创建代理
+   return proxyFactory.getProxy(getProxyClassLoader());
+}
+```
+
+首先会进行一些前期处理，比如判断使用哪种动态代理技术生产代理类，以及Advisor的包装，然后进入创建代理的逻辑
+
+```java
+public Object getProxy(@Nullable ClassLoader classLoader) {
+    // 首先创建动态代理工厂，分为JDK和Cglib两种
+    // 然后根据代理工厂不同，调用同名方法以不同逻辑生成代理对象
+    return createAopProxy().getProxy(classLoader);
+}
+
+protected final synchronized AopProxy createAopProxy() {
+    if (!this.active) {
+        activate();
+    }
+    return getAopProxyFactory().createAopProxy(this);
+}
+
+@Override
+public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
+    // 如果满足任何一个条件，比如之前设置的ProxyTargetClass等
+    // 都会进入再次判断，否则直接使用JDK
+    if (config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config)) {
+        Class<?> targetClass = config.getTargetClass();
+        if (targetClass == null) {
+            throw new AopConfigException("TargetSource cannot determine target class: " +
+                                         "Either an interface or a target is required for proxy creation.");
+        }
+        // 如果是接口或JDK代理类，使用JDK
+        if (targetClass.isInterface() || Proxy.isProxyClass(targetClass)) {
+            return new JdkDynamicAopProxy(config);
+        }
+        // 否则使用Cglib
+        return new ObjenesisCglibAopProxy(config);
+    }
+    else {
+        return new JdkDynamicAopProxy(config);
+    }
+}
+```
+
+因为Cglib或JDK生成动态代理对象的逻辑都比较统一，所以这里就不再看getProxy中的逻辑了
+
+
+
+至此AOP注册AOP创建器以及解析加载横切逻辑，并织入生成代理对象的流程已经完成。
+
+剩下的就是在执行目标方法时，会调用代理对象的invoke方法，通过调用器链的形式，顺序调用@Before，目标方法，@After等方法
