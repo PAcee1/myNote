@@ -206,3 +206,145 @@ public class StartWebApplication extends AbstractAnnotationConfigDispatcherServl
     }
 }
 ```
+
+## MVC请求流程
+
+接下来我们就要开始对MVC原理进行解析，首先看一下请求流程，找到我们需要查看的重点
+
+![1590990759305](image/1590990759305.png)
+
+请求流程已经很熟悉了，其中重点就是前端控制器通过请求路径，向HandlerMapping查找具体的Controller，再通过调用HandlerAdapter调用其具体方法。
+
+所以我们的研究重点就是：
+
+- 前端控制器如何创建请求url与Controller方法映射
+- 从映射里获取并处理请求逻辑
+- 请求参数绑定到方法形参，执行方法处理请求返回视图的流程
+
+我们一点点开始研究
+
+## 创建Request和Controller方法映射
+
+我们知道，该映射是由DispatcherServlet向HandlerMapping中获取的，那么是不是创建也是在前端控制器进行初始化的呢？
+
+进入DispatcherServlet源码
+
+```java
+protected void initStrategies(ApplicationContext context) {
+   initMultipartResolver(context);
+   initLocaleResolver(context);
+   initThemeResolver(context);
+   // 初始化处理器映射器
+   initHandlerMappings(context);
+   // 初始化处理器适配器
+   initHandlerAdapters(context);
+   initHandlerExceptionResolvers(context);
+   initRequestToViewNameTranslator(context);
+   initViewResolvers(context);
+   initFlashMapManager(context);
+}
+```
+
+搜索init，果然搜索到前端控制器初始化其他组件的方法，进入初始化处理器映射器的代码
+
+```java
+private void initHandlerMappings(ApplicationContext context) {
+   this.handlerMappings = null;
+   // 判断是否查询全部的HandlerMappings，默认为true
+   if (this.detectAllHandlerMappings) {
+      // Find all HandlerMappings in the ApplicationContext, including ancestor contexts.
+      // 查询所有HandlerMapping类型的Bean
+      Map<String, HandlerMapping> matchingBeans =
+            BeanFactoryUtils.beansOfTypeIncludingAncestors(context, HandlerMapping.class, true, false);
+      if (!matchingBeans.isEmpty()) {
+         this.handlerMappings = new ArrayList<>(matchingBeans.values());
+         // 排序HandlerMapping，其实最重要的是RequestMappingHandlerMapping，是用来处理请求映射关系的
+         AnnotationAwareOrderComparator.sort(this.handlerMappings);
+      }
+   }
+   //····
+}
+```
+
+通过源码分析，我们发现这里只是初始化HandlerMapping，而真正创建Request和Controller方法映射的是在RequestMappingHandlerMapping
+
+![1590993010405](image/1590993010405.png)
+
+通过关系类图，会发现有一个InitializingBean接口，该接口肯定是初始化接口，而AbstractHandlerMethodMapping实现了他，所以我们进去看看
+
+```java
+@Override
+public void afterPropertiesSet() {
+   initHandlerMethods();
+}
+
+protected void initHandlerMethods() {
+   // 循环处理Bean
+   for (String beanName : getCandidateBeanNames()) {
+      if (!beanName.startsWith(SCOPED_TARGET_NAME_PREFIX)) {
+          // 对于注册映射关系的逻辑基本都在此方法中
+         processCandidateBean(beanName);
+      }
+   }
+   handlerMethodsInitialized(getHandlerMethods());
+}
+
+protected void processCandidateBean(String beanName) {
+    Class<?> beanType = null;
+    try {
+        // 获取bean的class对象
+        beanType = obtainApplicationContext().getType(beanName);
+    }
+    catch (Throwable ex) {
+        // An unresolvable bean type, probably from a lazy bean - let's ignore it.
+        if (logger.isTraceEnabled()) {
+            logger.trace("Could not resolve type for bean '" + beanName + "'", ex);
+        }
+    }
+    // 判断class上是否有Controller或RequestMapping注解
+    if (beanType != null && isHandler(beanType)) {
+        // 提取url和Controller映射关系
+        detectHandlerMethods(beanName);
+    }
+}
+
+protected void detectHandlerMethods(Object handler) {
+    Class<?> handlerType = (handler instanceof String ?
+                            obtainApplicationContext().getType((String) handler) : handler.getClass());
+
+    if (handlerType != null) {
+        // 获取类的本尊，即如果是代理cglib创建的类，获取其本尊
+        Class<?> userType = ClassUtils.getUserClass(handlerType);
+        // 寻找方法的@RequestMapping注解的方法实例
+        // 保存为Map，key为方法，value为RequestMappingInfo，保存了该注解上的信息，比如请求路径
+        Map<Method, T> methods = MethodIntrospector.selectMethods(userType,
+                                                                  (MethodIntrospector.MetadataLookup<T>) method -> {
+                                                                      try {
+                                                                          // 获取
+                                                                          return getMappingForMethod(method, userType);
+                                                                      }
+                                                                      catch (Throwable ex) {
+                                                                          throw new IllegalStateException("Invalid mapping on handler class [" +
+                                                                                                          userType.getName() + "]: " + method, ex);
+                                                                      }
+                                                                  });
+        if (logger.isTraceEnabled()) {
+            logger.trace(formatMappings(userType, methods));
+        }
+        // 将得到的methods对象们注册到HandlerMapping中
+        methods.forEach((method, mapping) -> {
+            // 获取被AOP包装后的方法
+            Method invocableMethod = AopUtils.selectInvocableMethod(method, userType);
+            // 注册到HandlerMapping
+            registerHandlerMethod(handler, invocableMethod, mapping);
+        });
+    }
+}
+```
+
+创建逻辑并不复杂，需要注意的是，该创建逻辑的调用是在refresh的doCreateBean()方法中进行的，需要先将映射关系注册到HandlerMapping中，然后之后在DispatcherServlet创建对应HandlerMapping时，就已经存在映射关系了
+
+## DispatcherServlet处理请求
+
+![1591004112797](image/1591004112797.png)
+
